@@ -1,0 +1,30 @@
+﻿version: '3.7'
+
+services:
+  db:
+    image: postgres
+    container_name: socialnetworkhomework-db
+    environment:
+      - POSTGRES_USER=baeldung
+      - POSTGRES_PASSWORD=baeldung
+      - POSTGRES_DB=baeldung
+    ports:
+      - 5433:5432
+    networks:
+      - sn-network
+
+  api:
+    image: socialnetworkhomework
+    container_name: socialnetworkhomework-api
+    ports:
+      - 5154:80
+    depends_on:
+      - db
+    environment:
+      - CONNECTIONSTRINGS__DEFAULT=User ID=baeldung;Password=baeldung;Host=postgres;Port=5432;Database=baeldung
+    networks:
+      - sn-network
+
+networks:
+  sn-network:
+    driver: bridge

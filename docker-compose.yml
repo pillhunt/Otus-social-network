@@ -1,30 +1,60 @@
-﻿version: '3.7'
-
-services:
-  db:
-    image: postgres
-    container_name: socialnetworkhomework-db
+﻿services:
+  snhw_nginx:
+    image: nginx
+    container_name: snhw_nginx
+    ports:
+      - 8080:80
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - snhw_api
+    networks:
+      - snhw_network
+  snhw_db:
+    image: postgres:latest
+    container_name: snhw_pg
     environment:
       - POSTGRES_USER=baeldung
       - POSTGRES_PASSWORD=baeldung
       - POSTGRES_DB=baeldung
+    volumes:
+        - snhw_pgdata:/var/lib/postgresql/data
     ports:
-      - 5433:5432
+      - 5432:5432
     networks:
-      - sn-network
-
-  api:
-    image: socialnetworkhomework
-    container_name: socialnetworkhomework-api
+      - snhw_network
+  snhw_pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: snhw_pgadmin
     ports:
-      - 5154:80
+      - 5454:80/tcp
     depends_on:
-      - db
+      - snhw_db
     environment:
-      - CONNECTIONSTRINGS__DEFAULT=User ID=baeldung;Password=baeldung;Host=postgres;Port=5432;Database=baeldung
+      - PGADMIN_DEFAULT_EMAIL=user@baeldung.com
+      - PGADMIN_DEFAULT_PASSWORD=baeldung
+      - PGADMIN_LISTEN_PORT=80
+    volumes:
+      - snhw_pgadmindata:/var/lib/pgadmin
+  snhw_api:
+    container_name: snhw_api
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+      - 5054:8080
+    depends_on:
+      - snhw_db
+    links:
+      - snhw_db
+    environment:
+      - CONNECTIONSTRINGS__DEFAULT=User ID=baeldung;Password=baeldung;Host=snhw_db;Port=5432;Database=baeldung
     networks:
-      - sn-network
-
+      - snhw_network
+volumes:
+  snhw_pgdata:
+  snhw_apidata:
+  snhw_pgadmindata:
 networks:
-  sn-network:
+  snhw_network:
     driver: bridge

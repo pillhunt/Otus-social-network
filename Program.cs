@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.OpenApi.Models;
@@ -15,7 +16,7 @@ namespace SocialnetworkHomework
 
         private static void Main(string[] args)
         {
-            using NpgsqlConnection conn = new("Server=host.docker.internal;Port=5432; Database=baeldung;User Id=baeldung;Password=baeldung;");
+            using NpgsqlConnection conn = new("User ID=baeldung;Password=baeldung;Host=snhw_db;Port=5432;Database=baeldung;");
 
             Actions action = new Actions(conn);
 
@@ -38,16 +39,22 @@ namespace SocialnetworkHomework
 
             WebApplication app = builder.Build();
             app.UseRouting();
-#if DEBUG
+
             app.UseSwagger();
             app.UseSwaggerUI(options =>
             {
                 options.RoutePrefix = string.Empty;
                 options.SwaggerEndpoint($"/swagger/{version}/swagger.json", version);
             });
-#endif
+
+
+            app.UseForwardedHeaders(new ForwardedHeadersOptions
+            {
+                ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+            });
 
             app.UseHttpsRedirection();
+            app.UseHsts();
 
             app.MapPost($"{version}" + "/user", (RegistrationData regData) =>
             {
@@ -59,9 +66,9 @@ namespace SocialnetworkHomework
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            app.MapGet($"{version}" + "/user", (Guid userId) =>
+            app.MapGet($"{version}" + "/user", (Guid a) =>
             {
-                return action.UserGet(userId);
+                return action.UserGet(a);
             })
             .WithName("UserGet")
             .Produces(StatusCodes.Status200OK, typeof(UserInfo))
@@ -70,9 +77,9 @@ namespace SocialnetworkHomework
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            app.MapDelete($"{version}" + "/user", (Guid userId, AuthRequestData authData) =>
+            app.MapDelete($"{version}" + "/user", (Guid b) =>
             {
-                return action.UserDelete(userId, authData);
+                return action.UserDelete(b);
             })
             .WithName("UserDelete")
             .Produces(StatusCodes.Status200OK)
@@ -81,9 +88,9 @@ namespace SocialnetworkHomework
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            app.MapPut($"{version}" + "/user", (Guid userId, UserCommonData userInfo) =>
+            app.MapPut($"{version}" + "/user", (Guid c, UserCommonData userInfo) =>
             {
-                return action.UserUpdate(userId, userInfo);
+                return action.UserUpdate(c, userInfo);
             })
             .WithName("UserUpdate")
             .Produces(StatusCodes.Status200OK)

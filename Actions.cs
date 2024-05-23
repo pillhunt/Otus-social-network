@@ -93,7 +93,7 @@ namespace SocialnetworkHomework
             }
         }
 
-        private string OpenSession(Guid userId)
+        private string OpenSession(Guid id)
         {
             try
             {
@@ -105,7 +105,7 @@ namespace SocialnetworkHomework
             }
         }
 
-        public IResult UserGet([FromRoute] Guid userId)
+        public IResult UserGet(Guid a)
         {
             try
             {
@@ -120,9 +120,7 @@ namespace SocialnetworkHomework
         /// <summary>
         /// Удаление пользователя
         /// </summary>
-        /// <param name="userId"></param>
-        /// <returns></returns>
-        public IResult UserDelete([FromBody] Guid userId, [FromBody] AuthRequestData authData)
+        public IResult UserDelete(Guid b)
         {
             try
             {
@@ -135,7 +133,7 @@ namespace SocialnetworkHomework
             }
         }
 
-        public IResult UserUpdate([FromBody] Guid userId, [FromBody] UserCommonData userInfo)
+        public IResult UserUpdate(Guid c, [FromBody] UserCommonData userInfo)
         {
             try
             {

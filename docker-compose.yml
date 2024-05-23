@@ -17,8 +17,10 @@
       - POSTGRES_USER=baeldung
       - POSTGRES_PASSWORD=baeldung
       - POSTGRES_DB=baeldung
+      - POSTGRES_HOST_AUTH_METHOD=trust
     volumes:
-        - snhw_pgdata:/var/lib/postgresql/data
+      - snhw_pgdata:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d
     ports:
       - 5432:5432
     networks:
@@ -48,7 +50,7 @@
     links:
       - snhw_db
     environment:
-      - CONNECTIONSTRINGS__DEFAULT=User ID=baeldung;Password=baeldung;Host=snhw_db;Port=5432;Database=baeldung
+      - CONNECTIONSTRINGS__DEFAULT=User ID=baeldung;Password=baeldung;Host=snhw_db;Port=5432;Database=baeldung;
     networks:
       - snhw_network
 volumes:

@@ -16,7 +16,10 @@ namespace SocialnetworkHomework
 
         private static void Main(string[] args)
         {
-            using NpgsqlConnection conn = new("User ID=baeldung;Password=baeldung;Host=snhw_db;Port=5432;Database=baeldung;");
+            var conString = Environment.GetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULT");
+            Console.WriteLine("CONNECTIONSTRINGS__DEFAULT:" + conString);
+
+            using NpgsqlConnection conn = new(conString);
 
             Actions action = new Actions(conn);
 

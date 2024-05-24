@@ -17,7 +17,6 @@
       - POSTGRES_USER=baeldung
       - POSTGRES_PASSWORD=baeldung
       - POSTGRES_DB=baeldung
-      - POSTGRES_HOST_AUTH_METHOD=trust
     volumes:
       - snhw_pgdata:/var/lib/postgresql/data
       - ./sql:/docker-entrypoint-initdb.d

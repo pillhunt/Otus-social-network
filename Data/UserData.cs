@@ -2,19 +2,21 @@
 {
     public abstract class UserCommonData
     {
-        public string FirstName { get; set; } = string.Empty;
-        public string SecondName { get; set; } = string.Empty;
-        public DateTime BirthDate { get; set; }
-        public string PersonalInterest { get; set; } = string.Empty;
-        public string City { get; set; } = string.Empty;
+        public string? FirstName { get; set; } = string.Empty;
+        public string? SecondName { get; set; } = string.Empty;
+        public string? Patronimic { get; set; } = string.Empty;
+        public DateTime? Birthday { get; set; }
+        public string? PersonalInterest { get; set; } = string.Empty;
+        public string? City { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
         public Gender Gender { get; set; }
-        public int Status { get; set; }
     }
 
 
     public class UserInfo : UserCommonData
     {
         public Guid Id { get; set; }
+        public int Status { get; set; }
     }
 
     /// <summary>

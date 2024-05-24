@@ -13,10 +13,10 @@ namespace SocialnetworkHomework
 {
     public class Program
     {
-
         private static void Main(string[] args)
         {
-            var conString = Environment.GetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULT");
+            var conString = Environment.GetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULT") 
+                ?? "User ID=baeldung;Password=baeldung;Host=snhw_db;Port=5432;Database=baeldung;";
             Console.WriteLine("CONNECTIONSTRINGS__DEFAULT:" + conString);
 
             using NpgsqlConnection conn = new(conString);
@@ -34,8 +34,8 @@ namespace SocialnetworkHomework
                 c.SwaggerDoc(version, new OpenApiInfo
                 {
                     Version = version,
-                    Title = "API Ñîöèàëüíîé ñåòè",
-                    Description = "Äîìàøíÿÿ ðàáîòà Otus"
+                    Title = "API Ð¡Ð¾Ñ†Ð¸Ð°Ð»ÑŒÐ½Ð¾Ð¹ ÑÐµÑ‚Ð¸",
+                    Description = "Ð”Ð¾Ð¼Ð°ÑˆÐ½ÑÑ Ñ€Ð°Ð±Ð¾Ñ‚Ð° Otus"
                 });  
                 c.DescribeAllParametersInCamelCase();
             });
@@ -69,9 +69,9 @@ namespace SocialnetworkHomework
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            app.MapGet($"{version}" + "/user", (Guid a) =>
+            app.MapGet($"{version}" + "/user", (Guid userId) =>
             {
-                return action.UserGet(a);
+                return action.UserGet(userId);
             })
             .WithName("UserGet")
             .Produces(StatusCodes.Status200OK, typeof(UserInfo))
@@ -80,9 +80,9 @@ namespace SocialnetworkHomework
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            app.MapDelete($"{version}" + "/user", (Guid b) =>
+            app.MapDelete($"{version}" + "/user", (Guid userId) =>
             {
-                return action.UserDelete(b);
+                return action.UserDelete(userId);
             })
             .WithName("UserDelete")
             .Produces(StatusCodes.Status200OK)
@@ -91,9 +91,9 @@ namespace SocialnetworkHomework
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            app.MapPut($"{version}" + "/user", (Guid c, UserCommonData userInfo) =>
+            app.MapPut($"{version}" + "/user", (Guid userId, UserCommonData userInfo) =>
             {
-                return action.UserUpdate(c, userInfo);
+                return action.UserUpdate(userId, userInfo);
             })
             .WithName("UserUpdate")
             .Produces(StatusCodes.Status200OK)

@@ -1,0 +1,186 @@
+{
+	"info": {
+		"_postman_id": "1fd26154-e1e2-406a-a4a6-b3f6b933e870",
+		"name": "Socailnetwork Otus Homework",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "15545574"
+	},
+	"item": [
+		{
+			"name": "Reg new user",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"eMail\": \"test@test.ru\",\r\n  \"password\": \"password\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5054/v1/user",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5054",
+					"path": [
+						"v1",
+						"user"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get user by Id",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:5054/v1/user?userId=25f9660c-5d67-41e7-8f3e-fc28f23d8f3e",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5054",
+					"path": [
+						"v1",
+						"user"
+					],
+					"query": [
+						{
+							"key": "userId",
+							"value": "25f9660c-5d67-41e7-8f3e-fc28f23d8f3e"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete user by id",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:5054/v1/user?userId=25f9660c-5d67-41e7-8f3e-fc28f23d8f3e",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5054",
+					"path": [
+						"v1",
+						"user"
+					],
+					"query": [
+						{
+							"key": "userId",
+							"value": "25f9660c-5d67-41e7-8f3e-fc28f23d8f3e"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update user",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"firstName\": \"Вася\",\r\n  \"secondName\": \"Петров\",\r\n  \"patronimic\": \"Иванович\",\r\n  \"birthday\": \"1995-05-26\",\r\n  \"personalInterest\": \"Много всяких интересов\",\r\n  \"city\": \"Москва\",\r\n  \"email\": \"mail@supermail.ru\",\r\n  \"gender\": 1\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5054/v1/user?userId=a11cd038-bacd-41c6-a111-bf763f6f7446",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5054",
+					"path": [
+						"v1",
+						"user"
+					],
+					"query": [
+						{
+							"key": "userId",
+							"value": "a11cd038-bacd-41c6-a111-bf763f6f7446"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "User login",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"eMail\": \"\",\r\n  \"login\": \"test\",\r\n  \"password\": \"password\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5054/v1/user/login",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5054",
+					"path": [
+						"v1",
+						"user",
+						"login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "User logout",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"userId\": \"a11cd038-bacd-41c6-a111-bf763f6f7446\",\r\n  \"authToken\": \"0aa9ead8-de44-49fd-8a17-7afb3239d221\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5054/v1/user/logout",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5054",
+					"path": [
+						"v1",
+						"user",
+						"logout"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

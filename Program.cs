@@ -59,20 +59,14 @@ namespace SocialnetworkHomework
             app.UseHttpsRedirection();
             app.UseHsts();
 
-            app.MapPost($"{version}" + "/user", (RegistrationData regData) =>
-            {
-                return action.UserCreate(regData);
-            })
+            app.MapPost($"{version}" + "/user", (RegistrationData regData) => action.UserCreate(regData))
             .WithName("UserCreate")
             .Produces(StatusCodes.Status200OK, typeof(AuthResponseData))
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            app.MapGet($"{version}" + "/user", (Guid userId) =>
-            {
-                return action.UserGet(userId);
-            })
+            app.MapGet($"{version}" + "/user", (Guid userId) => action.UserGet(userId))
             .WithName("UserGet")
             .Produces(StatusCodes.Status200OK, typeof(UserInfo))
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
@@ -80,10 +74,7 @@ namespace SocialnetworkHomework
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            app.MapDelete($"{version}" + "/user", (Guid userId) =>
-            {
-                return action.UserDelete(userId);
-            })
+            app.MapDelete($"{version}" + "/user", (Guid userId) => action.UserDelete(userId))
             .WithName("UserDelete")
             .Produces(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
@@ -91,10 +82,7 @@ namespace SocialnetworkHomework
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            app.MapPut($"{version}" + "/user", (Guid userId, UserCommonData userInfo) =>
-            {
-                return action.UserUpdate(userId, userInfo);
-            })
+            app.MapPut($"{version}" + "/user", (Guid userId, UserEditData userInfo) => action.UserUpdate(userId, userInfo))
             .WithName("UserUpdate")
             .Produces(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
@@ -102,10 +90,7 @@ namespace SocialnetworkHomework
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            app.MapPost($"{version}" + "/user/login", (AuthRequestData authData) =>
-            {
-                return action.UserLogin(authData);
-            })
+            app.MapPost($"{version}" + "/user/login", (AuthRequestData authData) => action.UserLogin(authData))
             .WithName("UserLogin")
             .Produces(StatusCodes.Status200OK, typeof(AuthResponseData))
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
@@ -113,10 +98,7 @@ namespace SocialnetworkHomework
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            app.MapPost($"{version}" + "/user/logout", (AuthResponseData authData) =>
-            {
-                return action.UserLogout(authData);
-            })
+            app.MapPost($"{version}" + "/user/logout", (AuthResponseData authData) => action.UserLogout(authData))
             .WithName("UserLogout")
             .Produces(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))

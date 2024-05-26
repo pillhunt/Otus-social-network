@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
+using NpgsqlTypes;
 using SocialnetworkHomework.Data;
 using Swashbuckle.AspNetCore.Annotations;
 using System.Threading.Tasks;
@@ -50,7 +51,7 @@ namespace SocialnetworkHomework
 
                     await insertTransaction.CommitAsync();
 
-                    string authToken = OpenSession(_result);
+                    string authToken = OpenSession(_result).Result.AuthToken;
 
                     return Results.Json(new AuthResponseData() { UserId = _result, AuthToken = authToken },
                         new System.Text.Json.JsonSerializerOptions() { }, "application/json", 200);
@@ -69,7 +70,7 @@ namespace SocialnetworkHomework
                         new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
             }
         }
-
+        [HttpGet("{userId:Guid}")]
         public async Task<IResult> UserGet(Guid userId)
         {
             try
@@ -116,6 +117,8 @@ namespace SocialnetworkHomework
                     new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
             }
         }
+
+        [HttpDelete("{userId:Guid}")]
         /// <summary>
         /// Удаление пользователя
         /// </summary>
@@ -149,7 +152,7 @@ namespace SocialnetworkHomework
             }
         }
 
-        public async Task<IResult> UserUpdate([FromRoute] Guid userId, UserCommonData userInfo)
+        public async Task<IResult> UserUpdate(Guid userId, UserEditData userInfo)
         {
             try
             {
@@ -158,8 +161,8 @@ namespace SocialnetworkHomework
                 if (!checkForUserExists)
                     return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
 
-                string sqlText = "UPDATE public.sn_user_info " +
-                    " SET user_name=@user_name, user_sname=@user_sname, user_patronimic=@user_patronimic, " +
+                string sqlText = "UPDATE public.sn_user_info SET " +
+                    " user_name=@user_name, user_sname=@user_sname, user_patronimic=@user_patronimic, " +
                     " user_birthday=@user_birthday, user_city=@user_city, user_email=@user_email, user_gender=@user_gender, " +
                     " user_personal_interest=@user_personal_interest" +
                     " WHERE user_id = @user_id";
@@ -201,9 +204,19 @@ namespace SocialnetworkHomework
 
                 string authSqlStringPart = string.IsNullOrEmpty(authData.EMail) ? " user_login=@user_login " : " user_email=@user_email ";
                 
-                string sqlText = $"SELECT 1 FROM sn_user_info WHERE {authSqlStringPart} and user_password=@user_password";
+                string sqlText = $"SELECT user_id FROM sn_user_info WHERE {authSqlStringPart} and user_password=@user_password";
 
-                await using var authCommand = new NpgsqlCommand(sqlText, connection);
+                await using var authCommand = new NpgsqlCommand(sqlText, connection)
+                {
+                    Parameters =
+                    {
+                        new("@user_email", authData.EMail),
+                        new("@user_login", authData.Login),
+                        new("@user_password", authData.Password)
+                    }
+                };
+
+                Guid userId = Guid.Parse("00000000-0000-0000-0000-000000000000");
 
                 using (NpgsqlDataReader reader = await authCommand.ExecuteReaderAsync())
                 {
@@ -211,9 +224,16 @@ namespace SocialnetworkHomework
 
                     if (!reader.HasRows)
                         return Results.Json($"Пользователь {userNotFound} не найден.", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
+
+                    while (reader.Read())
+                    {
+                        userId = reader.GetGuid(0);
+                    }
                 }
 
-                return Results.Json(new AuthResponseData(),
+                AuthResponseData result = await OpenSession(userId);
+
+                return Results.Json(result,
                     new System.Text.Json.JsonSerializerOptions() { }, "application/json", 200);
             }
             catch (Exception ex)
@@ -227,6 +247,21 @@ namespace SocialnetworkHomework
         {
             try
             {
+                string sqlText = "UPDATE public.sn_user_sessions " +
+                    " SET user_session_status = false " +
+                    " WHERE user_id = @user_id AND @user_auth_token=user_auth_token";
+
+                await using var updateCommand = new NpgsqlCommand(sqlText, connection)
+                {
+                    Parameters =
+                    {
+                        new("@user_id", authData.UserId),
+                        new("@user_auth_token", authData.AuthToken)                        
+                    }
+                };
+
+                await updateCommand.ExecuteNonQueryAsync();
+
                 return Results.Ok();
             }
             catch (Exception ex)
@@ -237,8 +272,11 @@ namespace SocialnetworkHomework
         }
 
 
-        private async Task<string> OpenSession(Guid userId)
+        private async Task<AuthResponseData> OpenSession(Guid userId)
         {
+            if (userId.ToString() == "00000000-0000-0000-0000-000000000000")
+                throw new Exception("Не задан идентификатор пользователя.");
+
             try
             {
                 await using NpgsqlTransaction insertTransaction = await connection.BeginTransactionAsync();
@@ -249,41 +287,46 @@ namespace SocialnetworkHomework
                         " (user_id, user_session_created, user_session_duration, user_auth_token, user_session_status) " +
                         " VALUES " +
                         " (@user_id, @user_session_created, @user_session_duration, @user_auth_token, @user_session_status) " +
-                        " RETURNING user_auth_token";
+                        " RETURNING user_session_id";
+
+                    NpgsqlParameter uploadTimeParam = new NpgsqlParameter("@user_session_created", NpgsqlDbType.Timestamp);
+                    uploadTimeParam.Value = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+
+                    string authToken = Guid.NewGuid().ToString();
 
                     await using var insertCommand = new NpgsqlCommand(sqlText, connection, insertTransaction)
-                    {
+                    {                        
                         Parameters =
-                    {
-                        new("@user_id", userId),
-                        new("@user_session_created", NpgsqlTypes.NpgsqlDbType.Timestamp),
-                        new("@user_session_duration", 360)
-                    }
-                    };
+                        {
+                            new("@user_id", userId),
+                            uploadTimeParam,
+                            new("@user_session_duration", 360000),
+                            new("@user_auth_token", authToken),
+                            new("@user_session_status", true)
+                        }
+                     };
 
-                    object? result = await insertCommand.ExecuteScalarAsync()
-                        ?? throw new Exception("Не удалось получить идентификатор пользователя. Пусто");
+                    object? execResult = await insertCommand.ExecuteScalarAsync();
 
-                    if (!Guid.TryParse(result.ToString(), out Guid _result))
-                        throw new Exception($"Не удалось получить идентификатор пользователя. Значение: {result}");
+                    if (!Guid.TryParse(execResult.ToString(), out Guid _result))
+                        throw new Exception($"Не удалось получить идентификатор сессии. Значение: {execResult}");
 
                     await insertTransaction.CommitAsync();
 
-                    return Results.Json(new AuthResponseData() { UserId = _result, AuthToken = authToken },
-                        new System.Text.Json.JsonSerializerOptions() { }, "application/json", 200);
+                    var result = new AuthResponseData() { UserId = _result, AuthToken = authToken };
+
+                    return result;
                 }
                 catch (Exception ex)
                 {
                     await insertTransaction.RollbackAsync();
 
-                    return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
-                        new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
+                    throw ex; ;
                 }
             }
             catch (Exception ex)
             {
-                return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
-                        new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
+                throw ex;
             }
         }
 

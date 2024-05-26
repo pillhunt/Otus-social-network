@@ -12,6 +12,7 @@
         public Gender Gender { get; set; }
     }
 
+    public class UserEditData : UserCommonData;
 
     public class UserInfo : UserCommonData
     {

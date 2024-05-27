@@ -10,9 +10,9 @@ CREATE TABLE IF NOT EXISTS public.sn_user_info
 	user_patronimic text COLLATE pg_catalog."default",
 	user_birthday date,
 	user_city text COLLATE pg_catalog."default",
-	user_email text COLLATE pg_catalog."default" NOT NULL,
-	user_login text COLLATE pg_catalog."default" NOT NULL,
-	user_password text COLLATE pg_catalog."default" NOT NULL DEFAULT encode(gen_random_bytes(32), 'hex'::text),
+	user_email text COLLATE pg_catalog."default" NOT NULL UNIQUE,
+	user_login text COLLATE pg_catalog."default" NOT NULL UNIQUE,
+	user_password text COLLATE pg_catalog."default" NOT NULL,
 	user_status smallint NOT NULL,
     user_gender smallint,
 	CONSTRAINT sn_user_info_pkey PRIMARY KEY (user_id)

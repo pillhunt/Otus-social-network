@@ -3,6 +3,7 @@ using Npgsql;
 using NpgsqlTypes;
 using SocialnetworkHomework.Data;
 using Swashbuckle.AspNetCore.Annotations;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 using System.Xml;
 
@@ -37,7 +38,7 @@ namespace SocialnetworkHomework
                         Parameters =
                     {
                         new("@user_login", regData.EMail.Split('@')[0]),
-                        new("@user_password", regData.Password),
+                        new("@user_password", GetHash(regData.Password)),
                         new("@user_status", 1),
                         new("@user_email", regData.EMail)
                     }
@@ -199,24 +200,23 @@ namespace SocialnetworkHomework
             try
             {
                 string userLogin = authData.Login;
-                string userPassword = authData.Password;
+                string userPassword = string.Empty;
                 string userEmail = authData.EMail;
 
                 string authSqlStringPart = string.IsNullOrEmpty(authData.EMail) ? " user_login=@user_login " : " user_email=@user_email ";
                 
-                string sqlText = $"SELECT user_id FROM sn_user_info WHERE {authSqlStringPart} and user_password=@user_password";
+                string sqlText = $"SELECT user_id, user_password FROM sn_user_info WHERE {authSqlStringPart}";
 
                 await using var authCommand = new NpgsqlCommand(sqlText, connection)
                 {
                     Parameters =
                     {
                         new("@user_email", authData.EMail),
-                        new("@user_login", authData.Login),
-                        new("@user_password", authData.Password)
+                        new("@user_login", authData.Login)
                     }
                 };
 
-                Guid userId = Guid.Parse("00000000-0000-0000-0000-000000000000");
+                Guid userId = Guid.Parse("00000000-0000-0000-0000-000000000000");                
 
                 using (NpgsqlDataReader reader = await authCommand.ExecuteReaderAsync())
                 {
@@ -228,7 +228,20 @@ namespace SocialnetworkHomework
                     while (reader.Read())
                     {
                         userId = reader.GetGuid(0);
+                        userPassword = reader.GetString(1);
                     }
+
+                    byte[] hashBytes = Convert.FromBase64String(userPassword);
+
+                    byte[] salt = new byte[16];
+                    Array.Copy(hashBytes, 0, salt, 0, 16);
+
+                    Rfc2898DeriveBytes convertedPassword = new Rfc2898DeriveBytes(authData.Password, salt, 100000);
+                    byte[] hash = convertedPassword.GetBytes(20);
+
+                    for (int i = 0; i < 20; i++)
+                        if (hashBytes[i + 16] != hash[i])
+                            throw new UnauthorizedAccessException();
                 }
 
                 AuthResponseData result = await OpenSession(userId);
@@ -356,6 +369,24 @@ namespace SocialnetworkHomework
             {
                 throw ex;
             }
+        }
+
+        private string GetHash(string password)
+        {
+            string hashString = string.Empty;
+            byte[] salt;
+            new RNGCryptoServiceProvider().GetBytes(salt = new byte[16]);
+
+            Rfc2898DeriveBytes convertedPassword = new Rfc2898DeriveBytes(password, salt, 100000);
+            byte[] hash = convertedPassword.GetBytes(20);
+
+            byte[] hashBytes = new byte[36];
+            Array.Copy(salt, 0, hashBytes, 0, 16);
+            Array.Copy(hash, 0, hashBytes, 16, 20);
+
+            hashString = Convert.ToBase64String(hashBytes);
+
+            return hashString;
         }
     }
 }

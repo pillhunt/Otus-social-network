@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS public.sn_user_info
 	user_password text COLLATE pg_catalog."default" NOT NULL,
 	user_status smallint NOT NULL,
     user_gender smallint,
-	CONSTRAINT sn_user_info_pkey PRIMARY KEY (user_id)
+	CONSTRAINT sn_user_info_pkey PRIMARY KEY (user_id),
+	CONSTRAINT sn_user_info_unique UNIQUE (user_id, user_email, user_login)
 )
 
 TABLESPACE pg_default;
@@ -31,7 +32,8 @@ CREATE TABLE IF NOT EXISTS public.sn_user_sessions
     user_session_duration integer NOT NULL,
     user_auth_token text COLLATE pg_catalog."default" NOT NULL,
     user_session_status boolean NOT NULL DEFAULT true,
-    CONSTRAINT sn_user_sessions_pkey PRIMARY KEY (user_session_id)
+    CONSTRAINT sn_user_sessions_pkey PRIMARY KEY (user_session_id),
+	CONSTRAINT sn_user_sessions_unique UNIQUE (user_session_id)
 )
 
 TABLESPACE pg_default;

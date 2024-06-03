@@ -334,7 +334,7 @@ namespace SocialnetworkHomework
 
         public async Task<IResult> UserSearch(UserBaseData userData)
         {
-<<<<<<< HEAD
+
             using NpgsqlConnection connection = new(connectionString);
 
             try
@@ -350,24 +350,10 @@ namespace SocialnetworkHomework
                     + (userData.Gender == null ? string.Empty : " and user_gender=@user_gender")
                     + (string.IsNullOrEmpty(userData.City) ? string.Empty : " and user_city ilike @user_city");
 
-=======
-            try
-            {
-                string whereRule = $" WHERE 1=1 "
-                    + (string.IsNullOrEmpty(userData.FirstName) ? string.Empty : " and user_nam ilike =@user_name")
-                    + (string.IsNullOrEmpty(userData.SecondName) ? string.Empty : " and user_sname ilike @user_sname")
-                    + (string.IsNullOrEmpty(userData.Patronimic) ? string.Empty : " and user_patronimic ilike @user_patronimic")
-                    + (userData.Birthday == null || !DateTime.TryParse(userData.Birthday.ToString(), out DateTime userBirthDay) ? string.Empty : " and user_birthdate=@user_birthdate")
-                    + (string.IsNullOrEmpty(userData.PersonalInterest) ? string.Empty : " and user_personal_interest ilike @user_personal_interest")
-                    + (userData.Gender == null ? string.Empty : " and user_gender=@user_gender")
-                    + (string.IsNullOrEmpty(userData.City) ? string.Empty : " and user_city ilike @user_city");
-
->>>>>>> 4904619 (Добавлен функционал поиска пользователей. Изменёнё скрипт заполнения данных для НТ. Обновлена коллекция Postman)
                 string sqlText = $"SELECT user_questionnaire_id FROM sn_user_info {whereRule}";
 
                 await using var authCommand = new NpgsqlCommand(sqlText, connection);
 
-<<<<<<< HEAD
                 if (!string.IsNullOrEmpty(userData.FirstName)) authCommand.Parameters.AddWithValue("@user_name", userData.FirstName);
                 if (!string.IsNullOrEmpty(userData.SecondName)) authCommand.Parameters.AddWithValue("@user_sname", userData.SecondName);
                 if (!string.IsNullOrEmpty(userData.Patronimic)) authCommand.Parameters.AddWithValue("@user_patronimic", userData.Patronimic);
@@ -375,7 +361,7 @@ namespace SocialnetworkHomework
                 if (!string.IsNullOrEmpty(userData.PersonalInterest)) authCommand.Parameters.AddWithValue("@user_personal_interest", userData.PersonalInterest);
                 if (userData.Gender != null) authCommand.Parameters.Add(new("@user_gender", (int)userData.Gender));
                 if (!string.IsNullOrEmpty(userData.City)) authCommand.Parameters.AddWithValue("@user_city", userData.City);
-=======
+
                 if (!string.IsNullOrEmpty(userData.FirstName)) authCommand.Parameters.AddWithValue("@user_name", "%" + userData.FirstName + "%");
                 if (!string.IsNullOrEmpty(userData.SecondName)) authCommand.Parameters.AddWithValue("@user_sname", "%" + userData.SecondName + "%");
                 if (!string.IsNullOrEmpty(userData.Patronimic)) authCommand.Parameters.AddWithValue("@user_patronimic", "%" + userData.Patronimic + "%");
@@ -383,7 +369,6 @@ namespace SocialnetworkHomework
                 if (!string.IsNullOrEmpty(userData.PersonalInterest)) authCommand.Parameters.AddWithValue("@user_personal_interest", "%" + userData.PersonalInterest + "%");
                 if (userData.Gender != null) authCommand.Parameters.Add(new("@user_gender", (int)userData.Gender));
                 if (!string.IsNullOrEmpty(userData.City)) authCommand.Parameters.AddWithValue("@user_city", "%" + userData.City + "%");
->>>>>>> 4904619 (Добавлен функционал поиска пользователей. Изменёнё скрипт заполнения данных для НТ. Обновлена коллекция Postman)
 
                 List<string> user_questionnaire_id = new List<string>();
 
@@ -398,11 +383,7 @@ namespace SocialnetworkHomework
                     }
                 }
 
-<<<<<<< HEAD
                 return Results.Json(new UserQuestionnaireId() { QuestionnaireIdList = user_questionnaire_id.OrderBy(o => o).ToList() },
-=======
-                return Results.Json(new UserQuestionnaireId() { QuestionnaireIdList = user_questionnaire_id },
->>>>>>> 4904619 (Добавлен функционал поиска пользователей. Изменёнё скрипт заполнения данных для НТ. Обновлена коллекция Postman)
                     new System.Text.Json.JsonSerializerOptions() { }, "application/json", 200);
             }
             catch (Exception ex)
@@ -410,7 +391,6 @@ namespace SocialnetworkHomework
                 return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
                     new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
             }
-<<<<<<< HEAD
             finally
             {
                 connection.Close();
@@ -418,10 +398,7 @@ namespace SocialnetworkHomework
         }
 
         private async Task<AuthResponseData> OpenSession(Guid userId, NpgsqlConnection connection)
-=======
-        }
-        private async Task<AuthResponseData> OpenSession(Guid userId)
->>>>>>> 4904619 (Добавлен функционал поиска пользователей. Изменёнё скрипт заполнения данных для НТ. Обновлена коллекция Postman)
+
         {
             if (userId.ToString() == "00000000-0000-0000-0000-000000000000")
                 throw new Exception("Не задан идентификатор пользователя.");

@@ -19,7 +19,9 @@
       - POSTGRES_DB=baeldung
     volumes:
       - snhw_pgdata:/var/lib/postgresql/data
-      - ./sql:/docker-entrypoint-initdb.d
+      - ./sql_init_tables:/docker-entrypoint-initdb.d
+      - ./sql_init_data/people.interests.csv:/people.interests.csv
+      - ./sql_init_data/people.csv:/people.csv
     ports:
       - 5432:5432
     networks:

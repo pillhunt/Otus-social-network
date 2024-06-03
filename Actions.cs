@@ -11,18 +11,22 @@ namespace SocialnetworkHomework
 {
     public class Actions
     {
-        private NpgsqlConnection connection;
+        string connectionString = Environment.GetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULT")
+                ?? "User ID=baeldung;Password=baeldung;Host=snhw_db;Port=5432;Database=baeldung;";
 
-        public Actions(NpgsqlConnection conn)
+        public Actions()
         {
-            this.connection = conn;
-            this.connection.Open();
+            
         }
 
         public async Task<IResult> UserCreate([FromBody] RegistrationData regData)
         {
+            using NpgsqlConnection connection = new(connectionString);           
+
             try
             {
+                connection.Open();
+
                 await using NpgsqlTransaction insertTransaction = await connection.BeginTransactionAsync();
 
                 try
@@ -52,7 +56,7 @@ namespace SocialnetworkHomework
 
                     await insertTransaction.CommitAsync();
 
-                    string authToken = OpenSession(_result).Result.AuthToken;
+                    string authToken = OpenSession(_result, connection).Result.AuthToken;
 
                     return Results.Json(new AuthResponseData() { UserId = _result, AuthToken = authToken },
                         new System.Text.Json.JsonSerializerOptions() { }, "application/json", 200);
@@ -70,15 +74,24 @@ namespace SocialnetworkHomework
                 return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
                         new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
             }
+            finally
+            {
+                connection.Close();
+            }
         }
-        [HttpGet("{userId:Guid}")]
+
         public async Task<IResult> UserGet(Guid userId)
         {
+            using NpgsqlConnection connection = new(connectionString);
+
             try
             {
+                connection.Open();
+
                 string sqlText = "SELECT " +
                     " user_id, user_name, user_sname, user_patronimic, user_birthday, " +
-                    " user_city, user_email, user_gender, user_login, user_password, user_status, user_personal_interest " +
+                    " user_city, user_email, user_gender, user_login, user_password, " +
+                    " user_status, user_personal_interest " +
                     " FROM sn_user_info WHERE user_id = @user_id";
 
                 await using var selectCommand = new NpgsqlCommand(sqlText, connection)
@@ -117,17 +130,25 @@ namespace SocialnetworkHomework
                 return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
                     new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
             }
+            finally 
+            { 
+                connection.Close(); 
+            }
         }
 
-        [HttpDelete("{userId:Guid}")]
+
         /// <summary>
         /// Удаление пользователя
         /// </summary>
         public async Task<IResult> UserDelete(Guid userId)
         {
+            using NpgsqlConnection connection = new(connectionString);
+
             try
             {
-                bool checkForUserExists = await CheckUserForExists(userId);
+                connection.Open();
+
+                bool checkForUserExists = await CheckUserForExists(userId, connection);
 
                 if (!checkForUserExists)
                     return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
@@ -151,13 +172,20 @@ namespace SocialnetworkHomework
                 return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
                     new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
             }
+            finally
+            {
+                connection.Close();
+            }
         }
 
         public async Task<IResult> UserUpdate(Guid userId, UserEditData userInfo)
         {
+            using NpgsqlConnection connection = new(connectionString);
+
             try
             {
-                bool checkForUserExists = await CheckUserForExists(userId);
+                connection.Open();
+                bool checkForUserExists = await CheckUserForExists(userId, connection);
 
                 if (!checkForUserExists)
                     return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
@@ -193,12 +221,20 @@ namespace SocialnetworkHomework
                 return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}.",
                     new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
             }
+            finally
+            {
+                connection.Close();
+            }
         }
 
         public async Task<IResult> UserLogin([FromBody] AuthRequestData authData)
         {
+            using NpgsqlConnection connection = new(connectionString);
+
             try
             {
+                connection.Open();
+
                 string userLogin = authData.Login;
                 string userPassword = string.Empty;
                 string userEmail = authData.EMail;
@@ -244,7 +280,7 @@ namespace SocialnetworkHomework
                             throw new UnauthorizedAccessException();
                 }
 
-                AuthResponseData result = await OpenSession(userId);
+                AuthResponseData result = await OpenSession(userId, connection);
 
                 return Results.Json(result,
                     new System.Text.Json.JsonSerializerOptions() { }, "application/json", 200);
@@ -254,12 +290,20 @@ namespace SocialnetworkHomework
                 return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
                     new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
             }
+            finally
+            {
+                connection.Close();
+            }
         }
 
         public async Task<IResult> UserLogout([FromBody] AuthResponseData authData)
         {
+            using NpgsqlConnection connection = new(connectionString);
+
             try
             {
+                connection.Open();
+
                 string sqlText = "UPDATE public.sn_user_sessions " +
                     " SET user_session_status = false " +
                     " WHERE user_id = @user_id AND @user_auth_token=user_auth_token";
@@ -282,10 +326,102 @@ namespace SocialnetworkHomework
                 return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
                     new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
             }
+            finally
+            {
+                connection.Close();
+            }
         }
 
+        public async Task<IResult> UserSearch(UserBaseData userData)
+        {
+<<<<<<< HEAD
+            using NpgsqlConnection connection = new(connectionString);
 
+            try
+            {
+                connection.Open();
+
+                string whereRule = $" WHERE 1=1 "
+                    + (string.IsNullOrEmpty(userData.FirstName) ? string.Empty : " and user_name ilike @user_name")
+                    + (string.IsNullOrEmpty(userData.SecondName) ? string.Empty : " and user_sname ilike @user_sname")
+                    + (string.IsNullOrEmpty(userData.Patronimic) ? string.Empty : " and user_patronimic ilike @user_patronimic")
+                    + (userData.Birthday == null || !DateTime.TryParse(userData.Birthday.ToString(), out DateTime userBirthDay) ? string.Empty : " and user_birthdate=@user_birthdate")
+                    + (string.IsNullOrEmpty(userData.PersonalInterest) ? string.Empty : " and user_personal_interest ilike @user_personal_interest")
+                    + (userData.Gender == null ? string.Empty : " and user_gender=@user_gender")
+                    + (string.IsNullOrEmpty(userData.City) ? string.Empty : " and user_city ilike @user_city");
+
+=======
+            try
+            {
+                string whereRule = $" WHERE 1=1 "
+                    + (string.IsNullOrEmpty(userData.FirstName) ? string.Empty : " and user_nam ilike =@user_name")
+                    + (string.IsNullOrEmpty(userData.SecondName) ? string.Empty : " and user_sname ilike @user_sname")
+                    + (string.IsNullOrEmpty(userData.Patronimic) ? string.Empty : " and user_patronimic ilike @user_patronimic")
+                    + (userData.Birthday == null || !DateTime.TryParse(userData.Birthday.ToString(), out DateTime userBirthDay) ? string.Empty : " and user_birthdate=@user_birthdate")
+                    + (string.IsNullOrEmpty(userData.PersonalInterest) ? string.Empty : " and user_personal_interest ilike @user_personal_interest")
+                    + (userData.Gender == null ? string.Empty : " and user_gender=@user_gender")
+                    + (string.IsNullOrEmpty(userData.City) ? string.Empty : " and user_city ilike @user_city");
+
+>>>>>>> 4904619 (Добавлен функционал поиска пользователей. Изменёнё скрипт заполнения данных для НТ. Обновлена коллекция Postman)
+                string sqlText = $"SELECT user_questionnaire_id FROM sn_user_info {whereRule}";
+
+                await using var authCommand = new NpgsqlCommand(sqlText, connection);
+
+<<<<<<< HEAD
+                if (!string.IsNullOrEmpty(userData.FirstName)) authCommand.Parameters.AddWithValue("@user_name", userData.FirstName);
+                if (!string.IsNullOrEmpty(userData.SecondName)) authCommand.Parameters.AddWithValue("@user_sname", userData.SecondName);
+                if (!string.IsNullOrEmpty(userData.Patronimic)) authCommand.Parameters.AddWithValue("@user_patronimic", userData.Patronimic);
+                if (userData.Birthday != null && DateTime.TryParse(userData.Birthday.ToString(), out userBirthDay)) authCommand.Parameters.Add(new("@user_birthdate", userData.Birthday));
+                if (!string.IsNullOrEmpty(userData.PersonalInterest)) authCommand.Parameters.AddWithValue("@user_personal_interest", userData.PersonalInterest);
+                if (userData.Gender != null) authCommand.Parameters.Add(new("@user_gender", (int)userData.Gender));
+                if (!string.IsNullOrEmpty(userData.City)) authCommand.Parameters.AddWithValue("@user_city", userData.City);
+=======
+                if (!string.IsNullOrEmpty(userData.FirstName)) authCommand.Parameters.AddWithValue("@user_name", "%" + userData.FirstName + "%");
+                if (!string.IsNullOrEmpty(userData.SecondName)) authCommand.Parameters.AddWithValue("@user_sname", "%" + userData.SecondName + "%");
+                if (!string.IsNullOrEmpty(userData.Patronimic)) authCommand.Parameters.AddWithValue("@user_patronimic", "%" + userData.Patronimic + "%");
+                if (userData.Birthday != null && DateTime.TryParse(userData.Birthday.ToString(), out userBirthDay)) authCommand.Parameters.Add(new("@user_birthdate", userData.Birthday));
+                if (!string.IsNullOrEmpty(userData.PersonalInterest)) authCommand.Parameters.AddWithValue("@user_personal_interest", "%" + userData.PersonalInterest + "%");
+                if (userData.Gender != null) authCommand.Parameters.Add(new("@user_gender", (int)userData.Gender));
+                if (!string.IsNullOrEmpty(userData.City)) authCommand.Parameters.AddWithValue("@user_city", "%" + userData.City + "%");
+>>>>>>> 4904619 (Добавлен функционал поиска пользователей. Изменёнё скрипт заполнения данных для НТ. Обновлена коллекция Postman)
+
+                List<string> user_questionnaire_id = new List<string>();
+
+                using (NpgsqlDataReader reader = await authCommand.ExecuteReaderAsync())
+                {
+                    if (!reader.HasRows)
+                        return Results.Json($"Пользователь не найден.", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
+                    
+                    while (reader.Read())
+                    {
+                        user_questionnaire_id.Add(reader.GetString(0));
+                    }
+                }
+
+<<<<<<< HEAD
+                return Results.Json(new UserQuestionnaireId() { QuestionnaireIdList = user_questionnaire_id.OrderBy(o => o).ToList() },
+=======
+                return Results.Json(new UserQuestionnaireId() { QuestionnaireIdList = user_questionnaire_id },
+>>>>>>> 4904619 (Добавлен функционал поиска пользователей. Изменёнё скрипт заполнения данных для НТ. Обновлена коллекция Postman)
+                    new System.Text.Json.JsonSerializerOptions() { }, "application/json", 200);
+            }
+            catch (Exception ex)
+            {
+                return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                    new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
+            }
+<<<<<<< HEAD
+            finally
+            {
+                connection.Close();
+            }
+        }
+
+        private async Task<AuthResponseData> OpenSession(Guid userId, NpgsqlConnection connection)
+=======
+        }
         private async Task<AuthResponseData> OpenSession(Guid userId)
+>>>>>>> 4904619 (Добавлен функционал поиска пользователей. Изменёнё скрипт заполнения данных для НТ. Обновлена коллекция Postman)
         {
             if (userId.ToString() == "00000000-0000-0000-0000-000000000000")
                 throw new Exception("Не задан идентификатор пользователя.");
@@ -343,7 +479,7 @@ namespace SocialnetworkHomework
             }
         }
 
-        private async Task<bool> CheckUserForExists(Guid userId)
+        private async Task<bool> CheckUserForExists(Guid userId, NpgsqlConnection connection)
         {
             try
             {

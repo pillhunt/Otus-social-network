@@ -13,7 +13,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n  \"eMail\": \"test@test.ru\",\r\n  \"password\": \"password\"\r\n}",
+					"raw": "{\r\n  \"eMail\": \"testtest@test.ru\",\r\n  \"password\": \"password222\"\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -129,7 +129,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n  \"eMail\": \"\",\r\n  \"login\": \"test\",\r\n  \"password\": \"password\"\r\n}",
+					"raw": "{\r\n  \"eMail\": \"\",\r\n  \"login\": \"testtest\",\r\n  \"password\": \"password222\"\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -177,6 +177,36 @@
 						"v1",
 						"user",
 						"logout"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "User search",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"city\": \"Мос\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5054/v1/user/search",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5054",
+					"path": [
+						"v1",
+						"user",
+						"search"
 					]
 				}
 			},

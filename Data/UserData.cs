@@ -1,6 +1,6 @@
 ﻿namespace SocialnetworkHomework.Data
 {
-    public abstract class UserCommonData
+    public class UserBaseData
     {
         public string? FirstName { get; set; } = string.Empty;
         public string? SecondName { get; set; } = string.Empty;
@@ -8,8 +8,11 @@
         public DateTime? Birthday { get; set; }
         public string? PersonalInterest { get; set; } = string.Empty;
         public string? City { get; set; } = string.Empty;
-        public string Email { get; set; } = string.Empty;
-        public Gender Gender { get; set; }
+        public Gender? Gender { get; set; }
+    }
+    public abstract class UserCommonData : UserBaseData
+    {        
+        public string Email { get; set; } = string.Empty;        
     }
 
     public class UserEditData : UserCommonData;

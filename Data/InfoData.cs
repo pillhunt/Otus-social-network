@@ -15,4 +15,9 @@
         public string EMail { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
     }
+
+    public class UserQuestionnaireId
+    {
+        public List<string> QuestionnaireIdList { get; set; } = new List<string>();
+    }
 }

@@ -15,13 +15,9 @@ namespace SocialnetworkHomework
     {
         private static void Main(string[] args)
         {
-            var conString = Environment.GetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULT") 
-                ?? "User ID=baeldung;Password=baeldung;Host=snhw_db;Port=5432;Database=baeldung;";
-            Console.WriteLine("CONNECTIONSTRINGS__DEFAULT:" + conString);
+            
 
-            using NpgsqlConnection conn = new(conString);
-
-            Actions action = new Actions(conn);
+            Actions action = new Actions();
 
             string version = "v1";
 
@@ -100,6 +96,14 @@ namespace SocialnetworkHomework
 
             app.MapPost($"{version}" + "/user/logout", (AuthResponseData authData) => action.UserLogout(authData))
             .WithName("UserLogout")
+            .Produces(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
+            .Produces(StatusCodes.Status404NotFound, typeof(InfoData))
+            .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
+            ;
+
+            app.MapPost($"{version}" + "/user/search", (UserBaseData userData) => action.UserSearch(userData))
+            .WithName("UserSearch")
             .Produces(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
             .Produces(StatusCodes.Status404NotFound, typeof(InfoData))

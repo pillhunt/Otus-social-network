@@ -396,3 +396,5 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+/sql_init_data/people.csv
+/sql_init_data/people.interests.csv

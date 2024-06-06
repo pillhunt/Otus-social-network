@@ -6,18 +6,19 @@ using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
 using Npgsql;
 using SocialnetworkHomework.Data;
+using SocialnetworkHomework.workers;
 using Swashbuckle.AspNetCore.Annotations;
+using System.Collections.Concurrent;
 using System.Reflection;
 
 namespace SocialnetworkHomework
 {
     public class Program
-    {
+    {       
+
         private static void Main(string[] args)
         {
-            
-
-            Actions action = new Actions();
+            RequestActions action = new RequestActions();
 
             string version = "v1";
 
@@ -35,6 +36,8 @@ namespace SocialnetworkHomework
                 });  
                 c.DescribeAllParametersInCamelCase();
             });
+
+            builder.Services.AddHostedService<RequestManager>(serviceProvider => new RequestManager());
 
             WebApplication app = builder.Build();
             app.UseRouting();

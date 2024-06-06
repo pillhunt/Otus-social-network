@@ -16,8 +16,22 @@
         public string Password { get; set; } = string.Empty;
     }
 
-    public class UserQuestionnaireId
+    public class UserQuestionnaire : UserBaseData
     {
-        public List<string> QuestionnaireIdList { get; set; } = new List<string>();
+        public string QuestionnaireId { get; set; } = string.Empty;
+    }
+
+    public sealed class RequestTask
+    {
+        public Guid TaskId { get; set; } = Guid.NewGuid();
+        public SemaphoreSlim? TaskSemaphore { get; set; }
+        public TaskResult Result { get; set; } = new TaskResult();
+        public IResult? RequestResult { get; set; }
+    }
+
+    public class TaskResult
+    {
+        public bool IsSuccessful { get; set; }
+        public string Result { get; set; }
     }
 }

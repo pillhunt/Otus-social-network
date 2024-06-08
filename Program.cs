@@ -10,15 +10,18 @@ using SocialnetworkHomework.workers;
 using Swashbuckle.AspNetCore.Annotations;
 using System.Collections.Concurrent;
 using System.Reflection;
+using System.Threading.Tasks;
 
 namespace SocialnetworkHomework
 {
     public class Program
-    {       
+    {
+        static private SemaphoreSlim requestTaskQueueSemaphore { get; set; } = new SemaphoreSlim(0, 100);
+        static private ConcurrentQueue<Task<IResult>> requestTaskQueue { get; set; } = new ConcurrentQueue<Task<IResult>>();
 
         private static void Main(string[] args)
         {
-            RequestActions action = new RequestActions();
+            RequestActions requestActions = new RequestActions();
 
             string version = "v1";
 
@@ -37,7 +40,7 @@ namespace SocialnetworkHomework
                 c.DescribeAllParametersInCamelCase();
             });
 
-            builder.Services.AddHostedService<RequestManager>(serviceProvider => new RequestManager());
+            builder.Services.AddHostedService<RequestManager>(serviceProvider => new RequestManager(requestTaskQueueSemaphore, requestTaskQueue));
 
             WebApplication app = builder.Build();
             app.UseRouting();
@@ -58,14 +61,14 @@ namespace SocialnetworkHomework
             app.UseHttpsRedirection();
             app.UseHsts();
 
-            app.MapPost($"{version}" + "/user", (RegistrationData regData) => action.UserCreate(regData))
+            app.MapPost($"{version}" + "/user", (RegistrationData regData) => requestActions.UserCreate(regData))
             .WithName("UserCreate")
             .Produces(StatusCodes.Status200OK, typeof(AuthResponseData))
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            app.MapGet($"{version}" + "/user", (Guid userId) => action.UserGet(userId))
+            app.MapGet($"{version}" + "/user", (Guid userId) => requestActions.UserGet(userId))
             .WithName("UserGet")
             .Produces(StatusCodes.Status200OK, typeof(UserInfo))
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
@@ -73,7 +76,7 @@ namespace SocialnetworkHomework
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            app.MapDelete($"{version}" + "/user", (Guid userId) => action.UserDelete(userId))
+            app.MapDelete($"{version}" + "/user", (Guid userId) => requestActions.UserDelete(userId))
             .WithName("UserDelete")
             .Produces(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
@@ -81,7 +84,7 @@ namespace SocialnetworkHomework
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            app.MapPut($"{version}" + "/user", (Guid userId, UserEditData userInfo) => action.UserUpdate(userId, userInfo))
+            app.MapPut($"{version}" + "/user", (Guid userId, UserEditData userInfo) => requestActions.UserUpdate(userId, userInfo))
             .WithName("UserUpdate")
             .Produces(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
@@ -89,7 +92,7 @@ namespace SocialnetworkHomework
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            app.MapPost($"{version}" + "/user/login", (AuthRequestData authData) => action.UserLogin(authData))
+            app.MapPost($"{version}" + "/user/login", (AuthRequestData authData) => requestActions.UserLogin(authData))
             .WithName("UserLogin")
             .Produces(StatusCodes.Status200OK, typeof(AuthResponseData))
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
@@ -97,7 +100,7 @@ namespace SocialnetworkHomework
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            app.MapPost($"{version}" + "/user/logout", (AuthResponseData authData) => action.UserLogout(authData))
+            app.MapPost($"{version}" + "/user/logout", (AuthResponseData authData) => requestActions.UserLogout(authData))
             .WithName("UserLogout")
             .Produces(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
@@ -105,7 +108,10 @@ namespace SocialnetworkHomework
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            app.MapPost($"{version}" + "/user/search", (UserBaseData userData) => action.UserSearch(userData))
+            app.MapPost($"{version}" + "/user/search", async (UserBaseData userData) => 
+            {
+                return await UserSearchAsync(requestActions, userData);
+            })
             .WithName("UserSearch")
             .Produces(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
@@ -114,6 +120,19 @@ namespace SocialnetworkHomework
             ;
 
             app.Run();
+        }
+
+        private static async Task<IResult> UserSearchAsync(RequestActions requestActions, UserBaseData userData)
+        {
+            SemaphoreSlim taskSemaphore = new SemaphoreSlim(0);
+            Task<IResult> userSearcCallTask = Task<IResult>.Run(async () => await requestActions.UserSearch(userData, taskSemaphore)); 
+            requestTaskQueue.Enqueue(userSearcCallTask);
+
+            requestTaskQueueSemaphore.Release();
+
+            await taskSemaphore.WaitAsync();
+
+            return await userSearcCallTask;
         }
     }
 }

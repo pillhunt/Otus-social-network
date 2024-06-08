@@ -16,8 +16,6 @@ namespace SocialnetworkHomework
         string connectionString = Environment.GetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULT")
                 ?? "User ID=baeldung;Password=baeldung;Host=snhw_db;Port=5432;Database=baeldung;";
 
-        public SemaphoreSlim taskQueueSemaphore { get; set; } = new SemaphoreSlim(0, 100);
-        public ConcurrentQueue<Task<IResult>> requestTaskQueue { get; set; } = new ConcurrentQueue<Task<IResult>>();
 
         public RequestActions()
         {
@@ -336,92 +334,87 @@ namespace SocialnetworkHomework
             }
         }
 
-        public void UserSearch(UserBaseData userData)
+        public async Task<IResult> UserSearch(UserBaseData userData, SemaphoreSlim semaphoreSlim)
         {
-            async Task<IResult> _userSearch(UserBaseData userData)
+            using NpgsqlConnection connection = new(connectionString);
+            try
             {
-                using NpgsqlConnection connection = new(connectionString);
-                try
+                connection.Open();
+
+                string whereRule = $" WHERE 1=1 "
+                    + (string.IsNullOrEmpty(userData.FirstName) ? string.Empty : " and user_name ilike @user_name")
+                    + (string.IsNullOrEmpty(userData.SecondName) ? string.Empty : " and user_sname ilike @user_sname")
+                    + (string.IsNullOrEmpty(userData.Patronimic) ? string.Empty : " and user_patronimic ilike @user_patronimic")
+                    + (userData.Birthday == null || !DateTime.TryParse(userData.Birthday.ToString(), out DateTime userBirthDay) ? string.Empty : " and user_birthdate=@user_birthdate")
+                    + (string.IsNullOrEmpty(userData.PersonalInterest) ? string.Empty : " and user_personal_interest ilike @user_personal_interest")
+                    + (userData.Gender == null ? string.Empty : " and user_gender=@user_gender")
+                    + (string.IsNullOrEmpty(userData.City) ? string.Empty : " and user_city ilike @user_city");
+
+                string sqlText = $"SELECT user_questionnaire_id, user_name, user_sname, user_patronimic, user_birthday, " +
+                    $" user_city, user_gender, user_personal_interest FROM sn_user_info {whereRule}";
+
+                var searchCommand = new NpgsqlCommand(sqlText, connection);
+
+                if (!string.IsNullOrEmpty(userData.FirstName)) searchCommand.Parameters.AddWithValue("@user_name", userData.FirstName);
+                if (!string.IsNullOrEmpty(userData.SecondName)) searchCommand.Parameters.AddWithValue("@user_sname", userData.SecondName);
+                if (!string.IsNullOrEmpty(userData.Patronimic)) searchCommand.Parameters.AddWithValue("@user_patronimic", userData.Patronimic);
+                if (userData.Birthday != null && DateTime.TryParse(userData.Birthday.ToString(), out userBirthDay)) searchCommand.Parameters.Add(new("@user_birthdate", userData.Birthday));
+                if (!string.IsNullOrEmpty(userData.PersonalInterest)) searchCommand.Parameters.AddWithValue("@user_personal_interest", userData.PersonalInterest);
+                if (userData.Gender != null) searchCommand.Parameters.Add(new("@user_gender", (int)userData.Gender));
+                if (!string.IsNullOrEmpty(userData.City)) searchCommand.Parameters.AddWithValue("@user_city", userData.City);
+
+                if (!string.IsNullOrEmpty(userData.FirstName)) searchCommand.Parameters.AddWithValue("@user_name", "%" + userData.FirstName + "%");
+                if (!string.IsNullOrEmpty(userData.SecondName)) searchCommand.Parameters.AddWithValue("@user_sname", "%" + userData.SecondName + "%");
+                if (!string.IsNullOrEmpty(userData.Patronimic)) searchCommand.Parameters.AddWithValue("@user_patronimic", "%" + userData.Patronimic + "%");
+                if (userData.Birthday != null && DateTime.TryParse(userData.Birthday.ToString(), out userBirthDay)) searchCommand.Parameters.Add(new("@user_birthdate", userData.Birthday));
+                if (!string.IsNullOrEmpty(userData.PersonalInterest)) searchCommand.Parameters.AddWithValue("@user_personal_interest", "%" + userData.PersonalInterest + "%");
+                if (userData.Gender != null) searchCommand.Parameters.Add(new("@user_gender", (int)userData.Gender));
+                if (!string.IsNullOrEmpty(userData.City)) searchCommand.Parameters.AddWithValue("@user_city", "%" + userData.City + "%");
+
+                List<string> user_questionnaire_id = new List<string>();
+
+                List<UserQuestionnaire> userQuestionnaires = new List<UserQuestionnaire>();
+
+                using (NpgsqlDataReader reader = searchCommand.ExecuteReader())
                 {
-                    taskQueueSemaphore.Wait();
-
-                    connection.Open();
-
-                    string whereRule = $" WHERE 1=1 "
-                        + (string.IsNullOrEmpty(userData.FirstName) ? string.Empty : " and user_name ilike @user_name")
-                        + (string.IsNullOrEmpty(userData.SecondName) ? string.Empty : " and user_sname ilike @user_sname")
-                        + (string.IsNullOrEmpty(userData.Patronimic) ? string.Empty : " and user_patronimic ilike @user_patronimic")
-                        + (userData.Birthday == null || !DateTime.TryParse(userData.Birthday.ToString(), out DateTime userBirthDay) ? string.Empty : " and user_birthdate=@user_birthdate")
-                        + (string.IsNullOrEmpty(userData.PersonalInterest) ? string.Empty : " and user_personal_interest ilike @user_personal_interest")
-                        + (userData.Gender == null ? string.Empty : " and user_gender=@user_gender")
-                        + (string.IsNullOrEmpty(userData.City) ? string.Empty : " and user_city ilike @user_city");
-
-                    string sqlText = $"SELECT user_questionnaire_id, user_name, user_sname, user_patronimic, user_birthday, " +
-                        $" user_city, user_gender, user_personal_interest FROM sn_user_info {whereRule}";
-
-                    var searchCommand = new NpgsqlCommand(sqlText, connection);
-
-                    if (!string.IsNullOrEmpty(userData.FirstName)) searchCommand.Parameters.AddWithValue("@user_name", userData.FirstName);
-                    if (!string.IsNullOrEmpty(userData.SecondName)) searchCommand.Parameters.AddWithValue("@user_sname", userData.SecondName);
-                    if (!string.IsNullOrEmpty(userData.Patronimic)) searchCommand.Parameters.AddWithValue("@user_patronimic", userData.Patronimic);
-                    if (userData.Birthday != null && DateTime.TryParse(userData.Birthday.ToString(), out userBirthDay)) searchCommand.Parameters.Add(new("@user_birthdate", userData.Birthday));
-                    if (!string.IsNullOrEmpty(userData.PersonalInterest)) searchCommand.Parameters.AddWithValue("@user_personal_interest", userData.PersonalInterest);
-                    if (userData.Gender != null) searchCommand.Parameters.Add(new("@user_gender", (int)userData.Gender));
-                    if (!string.IsNullOrEmpty(userData.City)) searchCommand.Parameters.AddWithValue("@user_city", userData.City);
-
-                    if (!string.IsNullOrEmpty(userData.FirstName)) searchCommand.Parameters.AddWithValue("@user_name", "%" + userData.FirstName + "%");
-                    if (!string.IsNullOrEmpty(userData.SecondName)) searchCommand.Parameters.AddWithValue("@user_sname", "%" + userData.SecondName + "%");
-                    if (!string.IsNullOrEmpty(userData.Patronimic)) searchCommand.Parameters.AddWithValue("@user_patronimic", "%" + userData.Patronimic + "%");
-                    if (userData.Birthday != null && DateTime.TryParse(userData.Birthday.ToString(), out userBirthDay)) searchCommand.Parameters.Add(new("@user_birthdate", userData.Birthday));
-                    if (!string.IsNullOrEmpty(userData.PersonalInterest)) searchCommand.Parameters.AddWithValue("@user_personal_interest", "%" + userData.PersonalInterest + "%");
-                    if (userData.Gender != null) searchCommand.Parameters.Add(new("@user_gender", (int)userData.Gender));
-                    if (!string.IsNullOrEmpty(userData.City)) searchCommand.Parameters.AddWithValue("@user_city", "%" + userData.City + "%");
-
-                    List<string> user_questionnaire_id = new List<string>();
-
-                    List<UserQuestionnaire> userQuestionnaires = new List<UserQuestionnaire>();
-
-                    using (NpgsqlDataReader reader = await searchCommand.ExecuteReaderAsync())
+                    if (!reader.HasRows)
                     {
-                        if (!reader.HasRows)
-                            return Results.Json($"Пользователь не найден.", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
-
-                        while (reader.Read())
-                        {
-                            userQuestionnaires.Add(new UserQuestionnaire()
-                            {
-                                QuestionnaireId = reader.GetString(0),
-                                FirstName = !reader.IsDBNull(1) ? reader.GetString(1) : string.Empty,
-                                SecondName = !reader.IsDBNull(2) ? reader.GetString(2) : string.Empty,
-                                Patronimic = !reader.IsDBNull(3) ? reader.GetString(3) : string.Empty,
-                                Birthday = !reader.IsDBNull(4) ? reader.GetDateTime(4) : DateTime.Now,
-                                City = !reader.IsDBNull(5) ? reader.GetString(5) : string.Empty,
-                                Gender = !reader.IsDBNull(6) ? (Gender)reader.GetInt16(6) : 0,
-                                PersonalInterest = !reader.IsDBNull(7) ? reader.GetString(7) : string.Empty,
-                            });
-                        }
+                        return Results.Json($"Пользователь не найден.", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);                        
                     }
 
-                    return Results.Json(userQuestionnaires.OrderBy(q => q.QuestionnaireId).ToList(),
-                        new System.Text.Json.JsonSerializerOptions() { }, "application/json", 200);
-                }
-                catch (Exception ex)
-                {
-                    return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
-                        new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
-                }
-                finally
-                {
-                    connection.Close();
-                    taskQueueSemaphore.Release();
-                }
-            }
 
-            requestTaskQueue.Enqueue(_userSearch(userData));            
+                    while (reader.Read())
+                    {
+                        userQuestionnaires.Add(new UserQuestionnaire()
+                        {
+                            QuestionnaireId = reader.GetString(0),
+                            FirstName = !reader.IsDBNull(1) ? reader.GetString(1) : string.Empty,
+                            SecondName = !reader.IsDBNull(2) ? reader.GetString(2) : string.Empty,
+                            Patronimic = !reader.IsDBNull(3) ? reader.GetString(3) : string.Empty,
+                            Birthday = !reader.IsDBNull(4) ? reader.GetDateTime(4) : DateTime.Now,
+                            City = !reader.IsDBNull(5) ? reader.GetString(5) : string.Empty,
+                            Gender = !reader.IsDBNull(6) ? (Gender)reader.GetInt16(6) : 0,
+                            PersonalInterest = !reader.IsDBNull(7) ? reader.GetString(7) : string.Empty,
+                        });
+                    }
+                }
+
+                return Results.Json(userQuestionnaires.OrderBy(q => q.QuestionnaireId).ToList(),
+                    new System.Text.Json.JsonSerializerOptions() { }, "application/json", 200);
+            }
+            catch (Exception ex)
+            {
+                return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                    new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
+            }
+            finally
+            {
+                connection.Close();
+                semaphoreSlim.Release();
+            }
         }
 
         private async Task<AuthResponseData> OpenSession(Guid userId, NpgsqlConnection connection)
-
         {
             if (userId.ToString() == "00000000-0000-0000-0000-000000000000")
                 throw new Exception("Не задан идентификатор пользователя.");
@@ -524,5 +517,6 @@ namespace SocialnetworkHomework
 
             return hashString;
         }
+
     }
 }

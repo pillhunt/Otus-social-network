@@ -3,6 +3,7 @@ using Microsoft.VisualStudio.Threading;
 using Newtonsoft.Json;
 using System.Collections.Concurrent;
 using System.Net;
+using System.Threading.Tasks;
 
 namespace SocialnetworkHomework.workers
 {
@@ -10,16 +11,16 @@ namespace SocialnetworkHomework.workers
     {
         private CancellationToken cancellationToken;
 
-        private readonly SemaphoreSlim _taskQueueSemaphore;
-        private readonly ConcurrentQueue<Task<IResult>> _taskQueue;
+        private readonly SemaphoreSlim taskQueueSemaphore;
+        private readonly ConcurrentQueue<Task<IResult>> taskQueue;
 
-        public RequestManager(RequestActions requestActions) 
+        public RequestManager(SemaphoreSlim taskQueueSemaphore, ConcurrentQueue<Task<IResult>> taskQueue) 
         {
-            _taskQueueSemaphore = requestActions.taskQueueSemaphore;
-            _taskQueue = requestActions.requestTaskQueue;
+            this.taskQueue = taskQueue;
+            this.taskQueueSemaphore = taskQueueSemaphore;
         }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        protected override async Task ExecuteAsync(CancellationToken cancellationToken)
         {
             Task<IResult> processedTask;
 
@@ -27,25 +28,25 @@ namespace SocialnetworkHomework.workers
             AsyncManualResetEvent executorFinishSignal = new AsyncManualResetEvent();
             var tasksWaitingList = new List<Task<IResult>>();
 
-            while (!cancellationToken.IsCancellationRequested || !_taskQueue.IsEmpty)
+            while (!cancellationToken.IsCancellationRequested || !taskQueue.IsEmpty)
             {
                 try
                 {
-                    await _taskQueueSemaphore.WaitAsync(cancellationToken);
+                    await taskQueueSemaphore.WaitAsync(cancellationToken);
                 }
                 catch (OperationCanceledException)
                 {
-                    if (_taskQueue.IsEmpty)
+                    if (taskQueue.IsEmpty)
                         break;
                 }
 
-                if (!_taskQueue.TryDequeue(out processedTask))
+                if (!taskQueue.TryDequeue(out processedTask))
                 {
                     continue;
                 }
 
                 tasksWaitingList.Add(processedTask);
-
+                
                 while (tasksWaitingList.Count > 0)
                 {
                     var isFirstTask = true;
@@ -57,21 +58,23 @@ namespace SocialnetworkHomework.workers
                             executorFinishSignal.Reset();
                         }
 
-                        _ = taskInWaitingList.WaitAsync(cancellationToken);
+                        _ = Task.Run(async () => await taskInWaitingList);
                         tasksWaitingList.Remove(taskInWaitingList);
                     }
 
-                    if (_taskQueueSemaphore.CurrentCount > 0 || tasksWaitingList.Count == 0)
+                    if (taskQueueSemaphore.CurrentCount > 0 || tasksWaitingList.Count == 0)
                         break;
 
                     Task taskQueueWaitingTask;
-                    await Task.WhenAny(taskQueueWaitingTask = _taskQueueSemaphore.WaitAsync(), executorFinishSignal.WaitAsync());
-                    _taskQueueSemaphore.Release();
+                    await Task.WhenAny(taskQueueWaitingTask = taskQueueSemaphore.WaitAsync(), executorFinishSignal.WaitAsync());
+                    taskQueueSemaphore.Release();
                     await taskQueueWaitingTask;
-                    if (_taskQueueSemaphore.CurrentCount > 0)
+                    if (taskQueueSemaphore.CurrentCount > 0)
                         break;
-                }                    
+                }
             }
+
+            // Task.WaitAll(tasksWaitingList.ToArray(), cancellationToken);
         }      
     }
 }

@@ -25,6 +25,18 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS public.sn_user_info
 OWNER to baeldung;
 
+-- Index: sn_userinfo_id_fname_sname_index
+
+-- DROP INDEX IF EXISTS public.sn_userinfo_id_fname_sname_index;
+
+CREATE INDEX IF NOT EXISTS sn_userinfo_id_fname_sname_index
+    ON public.sn_user_info USING btree
+    (user_id ASC NULLS LAST)
+    INCLUDE(user_name, user_sname, user_city)
+    WITH (deduplicate_items=True)
+    TABLESPACE pg_default;
+
+
 CREATE TABLE IF NOT EXISTS public.sn_user_sessions
 (
     user_session_id uuid NOT NULL,

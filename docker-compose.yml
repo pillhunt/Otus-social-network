@@ -10,9 +10,9 @@
 #      - snhw_api
 #    networks:
 #      - snhw_network
-  snhw_db:
+  snhw_db_master:
     image: postgres:latest
-    container_name: snhw_pg
+    container_name: snhw_db_master
     environment:
       - POSTGRES_USER=baeldung
       - POSTGRES_PASSWORD=baeldung
@@ -26,13 +26,39 @@
       - 5432:5432
     networks:
       - snhw_network
+  snhw_db_slave_1:
+    image: postgres:latest
+    container_name: snhw_db_slave_1
+    environment:
+      - POSTGRES_USER=baeldung
+      - POSTGRES_PASSWORD=baeldung
+      - POSTGRES_DB=baeldung
+    volumes:
+      - snhw_pgdata_slave_1:/var/lib/postgresql/data
+    ports:
+      - 5433:5432
+    networks:
+      - snhw_network
+  snhw_db_slave_2:
+    image: postgres:latest
+    container_name: snhw_db_slave_2
+    environment:
+      - POSTGRES_USER=baeldung
+      - POSTGRES_PASSWORD=baeldung
+      - POSTGRES_DB=baeldung
+    volumes:
+      - snhw_pgdata_slave_2:/var/lib/postgresql/data
+    ports:
+      - 5434:5432
+    networks:
+      - snhw_network
   snhw_pgadmin:
     image: dpage/pgadmin4:latest
     container_name: snhw_pgadmin
     ports:
       - 5454:80/tcp
     depends_on:
-      - snhw_db
+      - snhw_db_master
     environment:
       - PGADMIN_DEFAULT_EMAIL=user@baeldung.com
       - PGADMIN_DEFAULT_PASSWORD=baeldung
@@ -47,11 +73,11 @@
     ports:
       - 5054:8080
     depends_on:
-      - snhw_db
+      - snhw_db_master
     links:
-      - snhw_db
+      - snhw_db_master
     environment:
-      - CONNECTIONSTRINGS__DEFAULT=User ID=baeldung;Password=baeldung;Host=snhw_db;Port=5432;Database=baeldung;
+      - ASPNETCORE_CONNECTIONSTRINGS__DEFAULT=User ID=baeldung;Password=baeldung;Host=snhw_db_master;Port=5432;Database=baeldung;
     networks:
       - snhw_network
 #  snhw_influxdb:
@@ -80,10 +106,13 @@
 #      - snhw_network
 volumes:
   snhw_pgdata:
+  snhw_pgdata_slave_1:
+  snhw_pgdata_slave_2:
   snhw_apidata:
-  snhw_pgadmindata:
-  snhw_grafana:
-  snhw_influxdb:
+  snhw_pgadmindata:  
+# snhw_grafana:
+# snhw_influxdb:
 networks:
   snhw_network:
+    name: snhw_network    
     driver: bridge

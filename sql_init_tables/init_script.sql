@@ -29,7 +29,7 @@ OWNER to baeldung;
 
 -- DROP INDEX IF EXISTS public.sn_userinfo_id_fname_sname_index;
 
-CREATE INDEX IF NOT EXISTS sn_userinfo_id_fname_sname_index
+CREATE INDEX IF NOT EXISTS sn_user_info_id_fname_sname_index
     ON public.sn_user_info USING btree
     (user_id ASC NULLS LAST)
     INCLUDE(user_name, user_sname, user_city)

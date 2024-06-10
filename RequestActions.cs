@@ -13,13 +13,12 @@ namespace SocialnetworkHomework
 {
     public class RequestActions
     {
-        string connectionString = Environment.GetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULT")
-                ?? "User ID=baeldung;Password=baeldung;Host=snhw_db;Port=5432;Database=baeldung;";
+        string connectionString = string.Empty;
 
 
         public RequestActions()
         {
-
+            connectionString = Environment.GetEnvironmentVariable("ASPNETCORE_CONNECTIONSTRINGS__DEFAULT");
         }
 
         public async Task<IResult> UserCreate([FromBody] RegistrationData regData)
@@ -82,7 +81,7 @@ namespace SocialnetworkHomework
             }
         }
 
-        public async Task<IResult> UserGet(Guid userId)
+        public async Task<IResult> UserGet(Guid userId, SemaphoreSlim semaphoreSlim)
         {
             using NpgsqlConnection connection = new(connectionString);
 
@@ -135,6 +134,7 @@ namespace SocialnetworkHomework
             finally
             {
                 connection.Close();
+                semaphoreSlim.Release();
             }
         }
 
@@ -336,6 +336,7 @@ namespace SocialnetworkHomework
 
         public async Task<IResult> UserSearch(UserBaseData userData, SemaphoreSlim semaphoreSlim)
         {
+
             using NpgsqlConnection connection = new(connectionString);
             try
             {

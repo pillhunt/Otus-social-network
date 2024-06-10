@@ -68,7 +68,10 @@ namespace SocialnetworkHomework
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            app.MapGet($"{version}" + "/user", (Guid userId) => requestActions.UserGet(userId))
+            app.MapGet($"{version}" + "/user", async (Guid userId) => 
+            { 
+                return await UserGetAsync(requestActions, userId); 
+            })
             .WithName("UserGet")
             .Produces(StatusCodes.Status200OK, typeof(UserInfo))
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
@@ -125,7 +128,20 @@ namespace SocialnetworkHomework
         private static async Task<IResult> UserSearchAsync(RequestActions requestActions, UserBaseData userData)
         {
             SemaphoreSlim taskSemaphore = new SemaphoreSlim(0);
-            Task<IResult> userSearcCallTask = Task<IResult>.Run(async () => await requestActions.UserSearch(userData, taskSemaphore)); 
+            Task<IResult> userSearcCallTask = Task.Run(async () => await requestActions.UserSearch(userData, taskSemaphore)); 
+            requestTaskQueue.Enqueue(userSearcCallTask);
+
+            requestTaskQueueSemaphore.Release();
+
+            await taskSemaphore.WaitAsync();
+
+            return await userSearcCallTask;
+        }
+
+        private static async Task<IResult> UserGetAsync(RequestActions requestActions, Guid userId)
+        {
+            SemaphoreSlim taskSemaphore = new SemaphoreSlim(0);
+            Task<IResult> userSearcCallTask = Task.Run(async () => await requestActions.UserGet(userId, taskSemaphore));
             requestTaskQueue.Enqueue(userSearcCallTask);
 
             requestTaskQueueSemaphore.Release();

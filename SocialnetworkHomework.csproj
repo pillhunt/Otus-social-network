@@ -21,6 +21,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <Folder Include="Docker\" />
 	  <Folder Include="Sql\" />
 	  <Folder Include="nginx\ssl\" />
 	</ItemGroup>

@@ -14,14 +14,20 @@
     image: postgres:latest
     container_name: snhw_db_master
     environment:
-      - POSTGRES_USER=baeldung
-      - POSTGRES_PASSWORD=baeldung
-      - POSTGRES_DB=baeldung
+      - POSTGRES_USER=master
+      - POSTGRES_PASSWORD=pass
+      - POSTGRES_DB=snwh_database
+    command: > #-c config_file=/var/lib/postgresql/data/postgresql.conf
+      -c ssl=off 
+      -c wal_level=replica 
+      -c max_wal_senders=4      
     volumes:
       - snhw_pgdata:/var/lib/postgresql/data
-      - ./sql_init_tables:/docker-entrypoint-initdb.d
-      - ./sql_init_data/people.interests.csv:/people.interests.csv
-      - ./sql_init_data/people.csv:/people.csv
+#     - ./Docker/custom_postgresql.conf:/var/lib/postgresql/data/postgresql.conf
+#     - ./Docker/custom_pg_hba.conf:/var/lib/postgresql/data/pg_hba.conf
+      - ./Sql_init_scripts:/docker-entrypoint-initdb.d
+      - ./Sql_init_data/people.interests.csv:/people.interests.csv
+      - ./Sql_init_data/people.csv:/people.csv
     ports:
       - 5432:5432
     networks:
@@ -30,11 +36,14 @@
     image: postgres:latest
     container_name: snhw_db_slave_1
     environment:
-      - POSTGRES_USER=baeldung
-      - POSTGRES_PASSWORD=baeldung
-      - POSTGRES_DB=baeldung
+      - POSTGRES_USER=master
+      - POSTGRES_PASSWORD=pass
+      - POSTGRES_DB=snwh_database
     volumes:
       - snhw_pgdata_slave_1:/var/lib/postgresql/data
+      - ./Sql_init_scripts:/docker-entrypoint-initdb.d
+      - ./Sql_init_data/people.interests.csv:/people.interests.csv
+      - ./Sql_init_data/people.csv:/people.csv
     ports:
       - 5433:5432
     networks:
@@ -43,11 +52,14 @@
     image: postgres:latest
     container_name: snhw_db_slave_2
     environment:
-      - POSTGRES_USER=baeldung
-      - POSTGRES_PASSWORD=baeldung
-      - POSTGRES_DB=baeldung
+      - POSTGRES_USER=master
+      - POSTGRES_PASSWORD=pass
+      - POSTGRES_DB=snwh_database
     volumes:
       - snhw_pgdata_slave_2:/var/lib/postgresql/data
+      - ./Sql_init_scripts:/docker-entrypoint-initdb.d
+      - ./Sql_init_data/people.interests.csv:/people.interests.csv
+      - ./Sql_init_data/people.csv:/people.csv
     ports:
       - 5434:5432
     networks:
@@ -60,11 +72,13 @@
     depends_on:
       - snhw_db_master
     environment:
-      - PGADMIN_DEFAULT_EMAIL=user@baeldung.com
-      - PGADMIN_DEFAULT_PASSWORD=baeldung
+      - PGADMIN_DEFAULT_EMAIL=user@snhw.com
+      - PGADMIN_DEFAULT_PASSWORD=pass
       - PGADMIN_LISTEN_PORT=80
     volumes:
       - snhw_pgadmindata:/var/lib/pgadmin
+    networks:
+      - snhw_network
   snhw_api:
     container_name: snhw_api
     build:
@@ -106,10 +120,15 @@
 #      - snhw_network
 volumes:
   snhw_pgdata:
+    name: snhw_pgdata
   snhw_pgdata_slave_1:
+    name: snhw_pgdata_slave_1
   snhw_pgdata_slave_2:
+    name: snhw_pgdata_slave_2
   snhw_apidata:
-  snhw_pgadmindata:  
+    name: snhw_apidata
+  snhw_pgadmindata:
+    name: snhw_pgadmindata
 # snhw_grafana:
 # snhw_influxdb:
 networks:

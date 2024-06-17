@@ -1,29 +1,30 @@
-SET search_path TO baeldung, public;
+SET search_path TO snhwdb, public;
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE TABLE IF NOT EXISTS public.sn_user_info
 (
-	user_id uuid NOT NULL DEFAULT gen_random_uuid(),
-	user_questionnaire_id text,
-	user_name text COLLATE pg_catalog."default",
-	user_sname text COLLATE pg_catalog."default",
-	user_patronimic text COLLATE pg_catalog."default",
-	user_birthday date,
-	user_city text COLLATE pg_catalog."default",
-	user_email text COLLATE pg_catalog."default" NOT NULL UNIQUE,
-	user_login text COLLATE pg_catalog."default" NOT NULL UNIQUE,
-	user_password text COLLATE pg_catalog."default" NOT NULL,
-	user_status smallint NOT NULL 1,
+    user_id uuid NOT NULL DEFAULT gen_random_uuid(),
+    user_questionnaire_id text COLLATE pg_catalog."default",
+    user_name text COLLATE pg_catalog."default",
+    user_sname text COLLATE pg_catalog."default",
+    user_patronimic text COLLATE pg_catalog."default",
+    user_birthday date,
+    user_city text COLLATE pg_catalog."default",
+    user_email text COLLATE pg_catalog."default" NOT NULL,
+    user_login text COLLATE pg_catalog."default" NOT NULL,
+    user_password text COLLATE pg_catalog."default" NOT NULL,
+    user_status smallint NOT NULL DEFAULT 1,
     user_gender smallint,
-	CONSTRAINT sn_user_info_pkey PRIMARY KEY (user_id),
-	CONSTRAINT sn_user_info_unique UNIQUE (user_id, user_email, user_login)
+    user_personal_interest text COLLATE pg_catalog."default",
+    CONSTRAINT sn_user_info_pkey PRIMARY KEY (user_id),
+    CONSTRAINT sn_user_info_unique UNIQUE (user_id, user_email, user_login)
 )
 
 TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS public.sn_user_info
-OWNER to baeldung;
+OWNER to snhwdb;
 
 -- Index: sn_userinfo_id_fname_sname_index
 
@@ -52,7 +53,7 @@ CREATE TABLE IF NOT EXISTS public.sn_user_sessions
 TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS public.sn_user_sessions
-OWNER to baeldung;
+OWNER to snhwdb;
 
 CREATE TABLE IF NOT EXISTS public.people_pt_tmp
 (
@@ -62,4 +63,4 @@ CREATE TABLE IF NOT EXISTS public.people_pt_tmp
 TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS public.people_pt_tmp
-    OWNER to baeldung;
+OWNER to snhwdb;

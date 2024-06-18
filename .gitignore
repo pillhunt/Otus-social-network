@@ -405,3 +405,4 @@ FodyWeavers.xsd
 /Sql_init_data/people.full.UTF8.csv
 /Sql_init_data/sql_init_data.7z
 /Sql_init_data/init_data.7z
+/Sql_init_data/fill_random_data_script.sql

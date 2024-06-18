@@ -4,7 +4,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE TABLE IF NOT EXISTS public.sn_user_info
 (
-    user_id uuid NOT NULL DEFAULT gen_random_uuid(),
+    user_id uuid NOT NULL,
     user_questionnaire_id text COLLATE pg_catalog."default",
     user_name text COLLATE pg_catalog."default",
     user_sname text COLLATE pg_catalog."default",
@@ -53,14 +53,4 @@ CREATE TABLE IF NOT EXISTS public.sn_user_sessions
 TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS public.sn_user_sessions
-OWNER to snhwdb;
-
-CREATE TABLE IF NOT EXISTS public.people_pt_tmp
-(
-    user_personal_interest text COLLATE pg_catalog."default"
-)
-
-TABLESPACE pg_default;
-
-ALTER TABLE IF EXISTS public.people_pt_tmp
 OWNER to snhwdb;

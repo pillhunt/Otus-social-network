@@ -13,14 +13,16 @@
   snhw_db_master:
     image: postgres:latest
     container_name: snhw_db_master
+    restart: unless-stopped
     environment:
       - POSTGRES_USER=snhwdb
       - POSTGRES_DB=snhwdb
       - POSTGRES_PASSWORD=pass
     command: >
+      -c max_connections=1000
       -c ssl=off 
       -c wal_level=replica 
-      -c max_wal_senders=4      
+      -c max_wal_senders=4
     volumes:
       - snhw_pgdata:/var/lib/postgresql/data
       - ./Sql_init_scripts:/docker-entrypoint-initdb.d
@@ -32,10 +34,13 @@
   snhw_db_slave_1:
     image: postgres:latest
     container_name: snhw_db_slave_1
+    restart: unless-stopped
     environment:
       - POSTGRES_USER=snhwdb
       - POSTGRES_DB=snhwdb
       - POSTGRES_PASSWORD=pass
+    command: >
+      -c max_connections=1000
     volumes:
       - snhw_pgdata_slave_1:/var/lib/postgresql/data
       - ./Sql_init_scripts:/docker-entrypoint-initdb.d
@@ -47,10 +52,13 @@
   snhw_db_slave_2:
     image: postgres:latest
     container_name: snhw_db_slave_2
+    restart: unless-stopped
     environment:
       - POSTGRES_USER=snhwdb
       - POSTGRES_DB=snhwdb
       - POSTGRES_PASSWORD=pass
+    command: >
+      -c max_connections=1000
     volumes:
       - snhw_pgdata_slave_2:/var/lib/postgresql/data
       - ./Sql_init_scripts:/docker-entrypoint-initdb.d
@@ -62,6 +70,7 @@
   snhw_pgadmin:
     image: dpage/pgadmin4:latest
     container_name: snhw_pgadmin
+    restart: unless-stopped
     ports:
       - 5454:80/tcp
     depends_on:
@@ -83,6 +92,7 @@
       - 5054:8080
     depends_on:
       - snhw_db_master
+    restart: unless-stopped
     links:
       - snhw_db_master
     environment:
@@ -106,6 +116,7 @@
     container_name: snhw_telegraf
     user: root
     entrypoint: "telegraf"
+    restart: unless-stopped
     ports:
       - 8125:8125
     volumes:
@@ -117,6 +128,7 @@
       - snhw_network
   snhw_grafana:
     image: grafana/grafana-oss
+    restart: unless-stopped
     ports:
       - 3000:3000
     container_name: snhw_grafana

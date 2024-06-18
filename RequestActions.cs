@@ -33,15 +33,16 @@ namespace SocialnetworkHomework
                 try
                 {
                     string sqlText = "INSERT INTO sn_user_info " +
-                        " (user_login, user_password, user_status, user_email) " +
+                        " (user_id, user_login, user_password, user_status, user_email) " +
                         " VALUES " +
-                        " (@user_login, @user_password, @user_status, @user_email) " +
+                        " (@user_id, @user_login, @user_password, @user_status, @user_email) " +
                         " RETURNING user_id";
 
                     await using var insertCommand = new NpgsqlCommand(sqlText, connection, insertTransaction)
                     {
                         Parameters =
                             {
+                                new("@user_id", Guid.NewGuid().ToString()),
                                 new("@user_login", regData.EMail.Split('@')[0]),
                                 new("@user_password", GetHash(regData.Password)),
                                 new("@user_status", 1),

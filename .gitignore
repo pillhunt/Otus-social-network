@@ -406,3 +406,9 @@ FodyWeavers.xsd
 /Sql_init_data/sql_init_data.7z
 /Sql_init_data/init_data.7z
 /Sql_init_data/fill_random_data_script.sql
+
+# Бэкапы master для slave
+/Docker/pg_slave_1
+/Docker/pg_slave_2
+/Docker/pg_standalone
+/Docker/pg_master

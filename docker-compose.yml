@@ -21,8 +21,6 @@
     command: >
       -c max_connections=1000
       -c ssl=off 
-      -c wal_level=replica 
-      -c max_wal_senders=4
     volumes:
       - snhw_pgdata:/var/lib/postgresql/data
       - ./Sql_init_scripts:/docker-entrypoint-initdb.d
@@ -43,8 +41,7 @@
       -c max_connections=1000
     volumes:
       - snhw_pgdata_slave_1:/var/lib/postgresql/data
-      - ./Sql_init_scripts:/docker-entrypoint-initdb.d
-      - ./Sql_init_data/people.csv:/people.csv
+      - ./Docker/pg_slave_1:/var/lib/postgresql/data
     ports:
       - 5433:5432
     networks:
@@ -61,10 +58,27 @@
       -c max_connections=1000
     volumes:
       - snhw_pgdata_slave_2:/var/lib/postgresql/data
-      - ./Sql_init_scripts:/docker-entrypoint-initdb.d
-      - ./Sql_init_data/people.csv:/people.csv
+      - ./Docker/pg_slave_2:/var/lib/postgresql/data
     ports:
       - 5434:5432
+    networks:
+      - snhw_network
+  snhw_db_standalone:
+    image: postgres:latest
+    container_name: snhw_db_standalone
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=snhwdb
+      - POSTGRES_DB=snhwdb
+      - POSTGRES_PASSWORD=pass
+    command: >
+      -c max_connections=1000
+    volumes:
+      - snhw_pgdata_standalone:/var/lib/postgresql/data
+      - ./Docker/roles.dmp:/dump/roles.dmp
+      - ./Docker/schema.dmp:/dump/schema.dmp
+    ports:
+      - 5435:5432
     networks:
       - snhw_network
   snhw_pgadmin:
@@ -135,7 +149,7 @@
     depends_on:
       - snhw_influxdb
     volumes:
-      - snhw_grafanadata:/var/lib/grafana
+      - snhw_grafanadata:/var/lib/grafana:rw
     networks:
       - snhw_network
 volumes:
@@ -145,6 +159,8 @@ volumes:
     name: snhw_pgdata_slave_1
   snhw_pgdata_slave_2:
     name: snhw_pgdata_slave_2
+  snhw_pgdata_standalone:
+    name: snhw_pgdata_standalone
   snhw_apidata:
     name: snhw_apidata
   snhw_pgadmindata:
@@ -153,6 +169,8 @@ volumes:
     name: snhw_grafanadata
   snhw_influxdbdata:
     name: snhw_influxdbdata
+  snhw_prometheusdata:
+    name: snhw_prometheusdata
 networks:
   snhw_network:
     name: snhw_network

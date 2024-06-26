@@ -42,7 +42,7 @@ namespace SocialnetworkHomework
                     {
                         Parameters =
                             {
-                                new("@user_id", Guid.NewGuid().ToString()),
+                                new("@user_id", Guid.NewGuid()),
                                 new("@user_login", regData.EMail.Split('@')[0]),
                                 new("@user_password", GetHash(regData.Password)),
                                 new("@user_status", 1),
@@ -428,9 +428,9 @@ namespace SocialnetworkHomework
                 try
                 {
                     string sqlText = "INSERT INTO sn_user_sessions " +
-                        " (user_id, user_session_created, user_session_duration, user_auth_token, user_session_status) " +
+                        " (user_session_id, user_id, user_session_created, user_session_duration, user_auth_token, user_session_status) " +
                         " VALUES " +
-                        " (@user_id, @user_session_created, @user_session_duration, @user_auth_token, @user_session_status) " +
+                        " (@user_session_id, @user_id, @user_session_created, @user_session_duration, @user_auth_token, @user_session_status) " +
                         " RETURNING user_session_id";
 
                     NpgsqlParameter uploadTimeParam = new NpgsqlParameter("@user_session_created", NpgsqlDbType.Timestamp);
@@ -442,6 +442,7 @@ namespace SocialnetworkHomework
                     {
                         Parameters =
                         {
+                            new("@user_session_id", Guid.NewGuid()),
                             new("@user_id", userId),
                             uploadTimeParam,
                             new("@user_session_duration", 360000),

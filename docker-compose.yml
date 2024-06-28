@@ -18,9 +18,6 @@
       - POSTGRES_USER=snhwdb
       - POSTGRES_DB=snhwdb
       - POSTGRES_PASSWORD=pass
-    command: >
-      -c max_connections=1000
-      -c ssl=off 
     volumes:
       - snhw_pgdata:/var/lib/postgresql/data
       - ./Sql_init_scripts:/docker-entrypoint-initdb.d
@@ -37,11 +34,8 @@
       - POSTGRES_USER=snhwdb
       - POSTGRES_DB=snhwdb
       - POSTGRES_PASSWORD=pass
-    command: >
-      -c max_connections=1000
     volumes:
-      - snhw_pgdata_slave_1:/var/lib/postgresql/data
-      - ./Docker/pg_slave_1:/var/lib/postgresql/data
+      - ./Docker/pg_slave_1/backup:/var/lib/postgresql/data
     ports:
       - 5433:5432
     networks:
@@ -54,11 +48,8 @@
       - POSTGRES_USER=snhwdb
       - POSTGRES_DB=snhwdb
       - POSTGRES_PASSWORD=pass
-    command: >
-      -c max_connections=1000
     volumes:
-      - snhw_pgdata_slave_2:/var/lib/postgresql/data
-      - ./Docker/pg_slave_2:/var/lib/postgresql/data
+      - ./Docker/pg_slave_2/backup:/var/lib/postgresql/data
     ports:
       - 5434:5432
     networks:
@@ -71,12 +62,9 @@
       - POSTGRES_USER=snhwdb
       - POSTGRES_DB=snhwdb
       - POSTGRES_PASSWORD=pass
-    command: >
-      -c max_connections=1000
     volumes:
       - snhw_pgdata_standalone:/var/lib/postgresql/data
-      - ./Docker/roles.dmp:/dump/roles.dmp
-      - ./Docker/schema.dmp:/dump/schema.dmp
+      - ./Sql_init_scripts:/docker-entrypoint-initdb.d
     ports:
       - 5435:5432
     networks:

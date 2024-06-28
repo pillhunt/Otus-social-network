@@ -28,8 +28,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Folder Include="Docker\pg_master\" />
-	  <Folder Include="Docker\pg_standalone\" />
 	  <Folder Include="Telegraf\" />
 	  <Folder Include="nginx\ssl\" />
 	</ItemGroup>

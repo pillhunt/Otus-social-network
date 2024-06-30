@@ -65,6 +65,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "nginx", "nginx", "{8A47DC2C
 		nginx\nginx.conf = nginx\nginx.conf
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "postman", "postman", "{29538FE4-46C6-4259-9E34-03C646B2F2EE}"
+	ProjectSection(SolutionItems) = preProject
+		postman\postman_collection.json = postman\postman_collection.json
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -94,6 +99,7 @@ Global
 		{5CD8A22E-3A3B-4160-A727-9A096AD3BCAA} = {D6C3D7C9-5635-4069-BD97-DC1C6926423B}
 		{08AB1645-F199-4FF6-90DB-DD5C9FE39504} = {D6C3D7C9-5635-4069-BD97-DC1C6926423B}
 		{8A47DC2C-D393-4807-83FC-208AEDFF72FE} = {5ED214FC-D827-4837-8FB8-2F41D6AED68A}
+		{29538FE4-46C6-4259-9E34-03C646B2F2EE} = {5ED214FC-D827-4837-8FB8-2F41D6AED68A}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1209B051-6806-4242-A637-0209F89DB1CA}

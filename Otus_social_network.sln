@@ -1,0 +1,101 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.9.34723.18
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "snhw_api", "snhw_api\snhw_api.csproj", "{68A5C9F3-5263-4EA1-BF99-28F932207783}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{5ED214FC-D827-4837-8FB8-2F41D6AED68A}"
+	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
+		docker-compose.yml = docker-compose.yml
+		Dockerfile = Dockerfile
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docker", "docker", "{D6C3D7C9-5635-4069-BD97-DC1C6926423B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "telegraf", "telegraf", "{242AC5CD-572B-4253-B203-C1F8E2795887}"
+	ProjectSection(SolutionItems) = preProject
+		telegraf\telegraf.conf = telegraf\telegraf.conf
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sql_init_data", "sql_init_data", "{C00442BE-F3D7-4431-9BB3-6040B1D68B59}"
+	ProjectSection(SolutionItems) = preProject
+		sql_init_data\people.7z = sql_init_data\people.7z
+		sql_init_data\people.csv = sql_init_data\people.csv
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "pg_master", "pg_master", "{4BC74F1A-F95F-4C0F-8D06-C267AE625C88}"
+	ProjectSection(SolutionItems) = preProject
+		docker\pg_master\pg_hba.conf = docker\pg_master\pg_hba.conf
+		docker\pg_master\postgresql_master.conf = docker\pg_master\postgresql_master.conf
+		docker\pg_master\postgresql_slave.conf = docker\pg_master\postgresql_slave.conf
+		docker\pg_master\standby.signal = docker\pg_master\standby.signal
+	EndProjectSection
+EndProject
+Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "snhw_frontend.client", "snhw_frontend\snhw_frontend.client\snhw_frontend.client.esproj", "{BE04DF36-5634-4AD0-A913-C093A4EA6540}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "pg_slave_1", "pg_slave_1", "{CCADA52E-DA48-475A-98A7-986028352278}"
+	ProjectSection(SolutionItems) = preProject
+		docker\pg_slave_1\pg_hba.conf = docker\pg_slave_1\pg_hba.conf
+		docker\pg_slave_1\postgresql_master.conf = docker\pg_slave_1\postgresql_master.conf
+		docker\pg_slave_1\postgresql_slave.conf = docker\pg_slave_1\postgresql_slave.conf
+		docker\pg_slave_1\standby.signal = docker\pg_slave_1\standby.signal
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "pg_slave_2", "pg_slave_2", "{5CD8A22E-3A3B-4160-A727-9A096AD3BCAA}"
+	ProjectSection(SolutionItems) = preProject
+		docker\pg_slave_2\pg_hba.conf = docker\pg_slave_2\pg_hba.conf
+		docker\pg_slave_2\postgresql_master.conf = docker\pg_slave_2\postgresql_master.conf
+		docker\pg_slave_2\postgresql_slave.conf = docker\pg_slave_2\postgresql_slave.conf
+		docker\pg_slave_2\standby.signal = docker\pg_slave_2\standby.signal
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "pg_standalone", "pg_standalone", "{08AB1645-F199-4FF6-90DB-DD5C9FE39504}"
+	ProjectSection(SolutionItems) = preProject
+		docker\pg_standalone\pg_hba.conf = docker\pg_standalone\pg_hba.conf
+		docker\pg_standalone\roles.dmp = docker\pg_standalone\roles.dmp
+		docker\pg_standalone\schema.dmp = docker\pg_standalone\schema.dmp
+		docker\pg_standalone\standby.signal = docker\pg_standalone\standby.signal
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "nginx", "nginx", "{8A47DC2C-D393-4807-83FC-208AEDFF72FE}"
+	ProjectSection(SolutionItems) = preProject
+		nginx\nginx.conf = nginx\nginx.conf
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{68A5C9F3-5263-4EA1-BF99-28F932207783}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{68A5C9F3-5263-4EA1-BF99-28F932207783}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{68A5C9F3-5263-4EA1-BF99-28F932207783}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{68A5C9F3-5263-4EA1-BF99-28F932207783}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BE04DF36-5634-4AD0-A913-C093A4EA6540}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BE04DF36-5634-4AD0-A913-C093A4EA6540}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BE04DF36-5634-4AD0-A913-C093A4EA6540}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{BE04DF36-5634-4AD0-A913-C093A4EA6540}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BE04DF36-5634-4AD0-A913-C093A4EA6540}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BE04DF36-5634-4AD0-A913-C093A4EA6540}.Release|Any CPU.Deploy.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{D6C3D7C9-5635-4069-BD97-DC1C6926423B} = {5ED214FC-D827-4837-8FB8-2F41D6AED68A}
+		{242AC5CD-572B-4253-B203-C1F8E2795887} = {5ED214FC-D827-4837-8FB8-2F41D6AED68A}
+		{C00442BE-F3D7-4431-9BB3-6040B1D68B59} = {5ED214FC-D827-4837-8FB8-2F41D6AED68A}
+		{4BC74F1A-F95F-4C0F-8D06-C267AE625C88} = {D6C3D7C9-5635-4069-BD97-DC1C6926423B}
+		{CCADA52E-DA48-475A-98A7-986028352278} = {D6C3D7C9-5635-4069-BD97-DC1C6926423B}
+		{5CD8A22E-3A3B-4160-A727-9A096AD3BCAA} = {D6C3D7C9-5635-4069-BD97-DC1C6926423B}
+		{08AB1645-F199-4FF6-90DB-DD5C9FE39504} = {D6C3D7C9-5635-4069-BD97-DC1C6926423B}
+		{8A47DC2C-D393-4807-83FC-208AEDFF72FE} = {5ED214FC-D827-4837-8FB8-2F41D6AED68A}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {1209B051-6806-4242-A637-0209F89DB1CA}
+	EndGlobalSection
+EndGlobal

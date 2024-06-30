@@ -7,19 +7,19 @@ EXPOSE 8080
 EXPOSE 8081
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-ARG BUILD_CONFIGURATION=Debug
-WORKDIR /src/socialnetworkhomework
-COPY ["SocialnetworkHomework.csproj", "."]
-RUN dotnet restore "./SocialnetworkHomework.csproj"
+ARG BUILD_CONFIGURATION=Release
+WORKDIR /src
+COPY ["snhw_api/snhw_api.csproj", "snhw_api/"]
+RUN dotnet restore "./snhw_api/snhw_api.csproj"
 COPY . .
-WORKDIR "/src/socialnetworkhomework/."
-RUN dotnet build "./SocialnetworkHomework.csproj" -c $BUILD_CONFIGURATION -o /app/build
+WORKDIR "/src/snhw_api"
+RUN dotnet build "./snhw_api.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
-ARG BUILD_CONFIGURATION=Debug
-RUN dotnet publish "./SocialnetworkHomework.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+ARG BUILD_CONFIGURATION=Release
+RUN dotnet publish "./snhw_api.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "SocialnetworkHomework.dll"]
+ENTRYPOINT ["dotnet", "snhw_api.dll"]

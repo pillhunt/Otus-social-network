@@ -1,6 +1,0 @@
-@snhw_frontend.Server_HostAddress = http://localhost:5143
-
-GET {{snhw_frontend.Server_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

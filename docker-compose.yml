@@ -23,8 +23,8 @@
       - POSTGRES_PASSWORD=pass
     volumes:
       - snhw_pgdata:/var/lib/postgresql/data
-      - ./docker/pg_master/postgresql_master.conf://var/lib/postgresql/data/postgresql.conf:rw
-      - ./docker/pg_master/pg_hba.conf://var/lib/postgresql/data/pg_hba.conf:rw
+      # - ./docker/pg_master/postgresql_master.conf://var/lib/postgresql/data/postgresql.conf:rw
+      # - ./docker/pg_master/pg_hba.conf://var/lib/postgresql/data/pg_hba.conf:rw
       - ./sql_init_scripts:/docker-entrypoint-initdb.d
       - ./sql_init_data/people.csv:/people.csv
     ports:
@@ -101,7 +101,7 @@
     container_name: snhw_api
     build:
       context: .
-      dockerfile: ./Dockerfile
+      dockerfile: ./snhw_api/Dockerfile
     ports:
       - 5054:8080
     depends_on:
@@ -111,6 +111,24 @@
       - snhw_db_master
     environment:
       - ASPNETCORE_CONNECTIONSTRINGS__DEFAULT=User ID=snhwdb;Password=pass;Database=snhwdb;Host=snhw_db_master;Port=5432;
+    networks:
+      - snhw_network
+#snhw_client
+  snhw_client:
+    container_name: snhw_client
+    build:
+      context: ./
+      dockerfile: ./snhw_client/Dockerfile
+    working_dir: /srv/snhw_client
+    volumes:
+      - ./snhw_client:/srv/snhw_client
+      - /srv/snhw_client/node_modules
+    stdin_open: true
+    environment:
+      - HOST=0.0.0.0
+      - CHOKIDAR_USEPOLLING=true
+    ports:
+      - 8082:8080
     networks:
       - snhw_network
 #snhw_influxdb
@@ -159,6 +177,7 @@ volumes:
   snhw_nginx:
     name: snhw_nginx
   snhw_pgdata:
+    #external: true
     name: snhw_pgdata
   snhw_pgdata_slave_1:
     name: snhw_pgdata_slave_1
@@ -169,13 +188,13 @@ volumes:
   snhw_apidata:
     name: snhw_apidata
   snhw_pgadmindata:
-    external: true
+    #external: true
     name: snhw_pgadmindata
   snhw_grafanadata:
-    external: true
+    #external: true
     name: snhw_grafanadata
   snhw_influxdbdata:
-    external: true
+    #external: true
     name: snhw_influxdbdata
 networks:
   snhw_network:

@@ -1,11 +1,7 @@
-﻿
+﻿using System.Collections.Concurrent;
 using Microsoft.VisualStudio.Threading;
-using Newtonsoft.Json;
-using System.Collections.Concurrent;
-using System.Net;
-using System.Threading.Tasks;
 
-namespace SocialnetworkHomework.workers
+namespace SocialnetworkHomework.Workers
 {
     internal sealed class RequestManager : BackgroundService
     {

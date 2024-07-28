@@ -23,6 +23,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sql_init_data", "sql_init_d
 	ProjectSection(SolutionItems) = preProject
 		sql_init_data\people.7z = sql_init_data\people.7z
 		sql_init_data\people.csv = sql_init_data\people.csv
+		sql_init_data\posts.7z = sql_init_data\posts.7z
+		sql_init_data\posts.txt = sql_init_data\posts.txt
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "pg_master", "pg_master", "{4BC74F1A-F95F-4C0F-8D06-C267AE625C88}"
@@ -67,7 +69,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "postman", "postman", "{2953
 		postman\postman_collection.json = postman\postman_collection.json
 	EndProjectSection
 EndProject
-Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "snhw_client", "snhw_client\snhw_client.esproj", "{BA590B37-2392-4EF1-BB81-19D5AED6D305}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sql_init_scripts", "sql_init_scripts", "{8D89AA17-CA23-4FE7-8583-843D75445E34}"
+	ProjectSection(SolutionItems) = preProject
+		sql_init_scripts\init_roles.sql = sql_init_scripts\init_roles.sql
+		sql_init_scripts\init_tables.sql = sql_init_scripts\init_tables.sql
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -79,12 +85,6 @@ Global
 		{68A5C9F3-5263-4EA1-BF99-28F932207783}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{68A5C9F3-5263-4EA1-BF99-28F932207783}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{68A5C9F3-5263-4EA1-BF99-28F932207783}.Release|Any CPU.Build.0 = Release|Any CPU
-		{BA590B37-2392-4EF1-BB81-19D5AED6D305}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{BA590B37-2392-4EF1-BB81-19D5AED6D305}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{BA590B37-2392-4EF1-BB81-19D5AED6D305}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
-		{BA590B37-2392-4EF1-BB81-19D5AED6D305}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{BA590B37-2392-4EF1-BB81-19D5AED6D305}.Release|Any CPU.Build.0 = Release|Any CPU
-		{BA590B37-2392-4EF1-BB81-19D5AED6D305}.Release|Any CPU.Deploy.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -99,6 +99,7 @@ Global
 		{08AB1645-F199-4FF6-90DB-DD5C9FE39504} = {D6C3D7C9-5635-4069-BD97-DC1C6926423B}
 		{8A47DC2C-D393-4807-83FC-208AEDFF72FE} = {5ED214FC-D827-4837-8FB8-2F41D6AED68A}
 		{29538FE4-46C6-4259-9E34-03C646B2F2EE} = {5ED214FC-D827-4837-8FB8-2F41D6AED68A}
+		{8D89AA17-CA23-4FE7-8583-843D75445E34} = {5ED214FC-D827-4837-8FB8-2F41D6AED68A}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1209B051-6806-4242-A637-0209F89DB1CA}

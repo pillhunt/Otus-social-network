@@ -398,3 +398,4 @@ FodyWeavers.xsd
 *.sln.iml
 /sql_init_data/people.csv
 /sql_init_data/people.interests.csv
+/sql_init_data/posts.txt

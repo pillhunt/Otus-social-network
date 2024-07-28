@@ -1,13 +1,12 @@
+using System.Security.Cryptography;
+
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using NpgsqlTypes;
+
 using SocialnetworkHomework.Data;
-using Swashbuckle.AspNetCore.Annotations;
-using System.Collections.Concurrent;
-using System.Security.Cryptography;
+using SocialnetworkHomework.Common;
 using System.Threading;
-using System.Threading.Tasks;
-using System.Xml;
 
 namespace SocialnetworkHomework
 {
@@ -15,11 +14,12 @@ namespace SocialnetworkHomework
     {
         string connectionString = string.Empty;
 
-
         public RequestActions()
         {
             connectionString = Environment.GetEnvironmentVariable("ASPNETCORE_CONNECTIONSTRINGS__DEFAULT");
         }
+
+        #region User section
 
         public async Task<IResult> UserCreate([FromBody] RegistrationData regData)
         {
@@ -41,13 +41,13 @@ namespace SocialnetworkHomework
                     await using var insertCommand = new NpgsqlCommand(sqlText, connection, insertTransaction)
                     {
                         Parameters =
-                            {
-                                new("@user_id", Guid.NewGuid()),
-                                new("@user_login", regData.EMail.Split('@')[0]),
-                                new("@user_password", GetHash(regData.Password)),
-                                new("@user_status", 1),
-                                new("@user_email", regData.EMail)
-                            }
+                        {
+                            new("@user_id", Guid.NewGuid()),
+                            new("@user_login", regData.EMail.Split('@')[0]),
+                            new("@user_password", GetHash(regData.Password)),
+                            new("@user_status", 1),
+                            new("@user_email", regData.EMail)
+                        }
                     };
 
                     object? result = await insertCommand.ExecuteScalarAsync()
@@ -82,7 +82,7 @@ namespace SocialnetworkHomework
             }
         }
 
-        public async Task<IResult> UserGet(Guid userId, SemaphoreSlim semaphoreSlim)
+        private async Task<IResult> UserGet(Guid userId, SemaphoreSlim semaphoreSlim)
         {
             using NpgsqlConnection connection = new(connectionString);
 
@@ -139,10 +139,6 @@ namespace SocialnetworkHomework
             }
         }
 
-
-        /// <summary>
-        /// Удаление пользователя
-        /// </summary>
         public async Task<IResult> UserDelete(Guid userId)
         {
             using NpgsqlConnection connection = new(connectionString);
@@ -381,7 +377,7 @@ namespace SocialnetworkHomework
                 {
                     if (!reader.HasRows)
                     {
-                        return Results.Json($"Пользователь не найден.", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);                        
+                        return Results.Json($"Пользователь не найден.", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
                     }
 
 
@@ -415,6 +411,416 @@ namespace SocialnetworkHomework
                 semaphoreSlim.Release();
             }
         }
+
+        public async Task<IResult> UserSearchAsync(UserBaseData userData)
+        {
+            SemaphoreSlim taskSemaphore = new SemaphoreSlim(0);
+            Task<IResult> userSearcCallTask = Task.Run(async () => await UserSearch(userData, taskSemaphore));
+            Queues.RequestTaskQueue.Enqueue(userSearcCallTask);
+
+            Queues.RequestTaskQueueSemaphore.Release();
+
+            await taskSemaphore.WaitAsync();
+
+            return await userSearcCallTask;
+        }
+
+        public async Task<IResult> UserGetAsync(Guid userId)
+        {
+            SemaphoreSlim taskSemaphore = new SemaphoreSlim(0);
+            Task<IResult> userSearcCallTask = Task.Run(async () => await UserGet(userId, taskSemaphore));
+            Queues.RequestTaskQueue.Enqueue(userSearcCallTask);
+
+            Queues.RequestTaskQueueSemaphore.Release();
+
+            await taskSemaphore.WaitAsync();
+
+            return await userSearcCallTask;
+        }
+
+        #endregion
+
+        #region Friend section
+
+        public async Task<IResult> FriendAddAsync(Guid userId, ContactData contactData)
+        {
+            using NpgsqlConnection connection = new(connectionString);
+            try
+            {
+                connection.Open();
+                await using NpgsqlTransaction insertTransaction = await connection.BeginTransactionAsync();
+
+                try
+                {
+                    string sqlText = "INSERT INTO sn_user_contacts " +
+                        " (user_id, contact_user_id, created, processed, comment) " +
+                        " VALUES " +
+                        " (@user_id, @contact_user_id, @created, @processed, @comment)" +
+                        " RETURNING id";
+
+                    await using var insertCommand = new NpgsqlCommand(sqlText, connection, insertTransaction)
+                    {
+                        Parameters =
+                        {
+                            new("@user_id", userId),
+                            new("@contact_user_id", contactData.Id),
+                            new("@created", DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
+                            new("@comment", contactData.Comment)
+                        }
+                    };
+
+                    object? result = await insertCommand.ExecuteScalarAsync()
+                            ?? throw new Exception("Не удалось получить идентификатор пользователя. Пусто");
+
+                    if (!Guid.TryParse(result.ToString(), out Guid _result))
+                        throw new Exception($"Не удалось получить идентификатор пользователя. Значение: {result}");
+
+                    await insertTransaction.CommitAsync();
+
+                    return Results.Ok();
+                }
+                catch (Exception ex) 
+                {
+                    await insertTransaction.RollbackAsync();
+
+                    return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                        new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
+                }
+            }
+            catch (Exception ex)
+            {
+                return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                    new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
+            }
+            finally
+            {
+                connection.Close();
+            }
+        }
+        
+        public async Task<IResult> FriendDeleteAsync(Guid userId, Guid contactId)
+        {
+            using NpgsqlConnection connection = new(connectionString);
+
+            try
+            {
+                connection.Open();
+
+                bool checkForUserExists = await CheckUserForExists(userId, connection);
+
+                if (!checkForUserExists)
+                    return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
+
+                string sqlText = "UPDATE sn_user_contacts " +
+                    "SET status = @status, processed = @processed " +
+                    "WHERE user_id = @user_id AND contact_user_id = @contact_user_id";
+
+                await using var updateCommand = new NpgsqlCommand(sqlText, connection)
+                {
+                    Parameters =
+                    {
+                        new("@user_id", userId),
+                        new("@contact_user_id", contactId),
+                        new("@status", -1),
+                        new("@processed", DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
+                    }
+                };
+
+                await updateCommand.ExecuteNonQueryAsync();
+
+                return Results.Ok();
+            }
+            catch (Exception ex)
+            {
+                return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                    new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
+            }
+            finally
+            {
+                connection.Close();
+            }
+        }
+
+        #endregion
+
+        #region Post section
+
+        public async Task<IResult> PostCreateAsync(Guid userId, string text)
+        {
+            using NpgsqlConnection connection = new(connectionString);
+
+            try
+            {
+                connection.Open();
+                await using NpgsqlTransaction insertTransaction = await connection.BeginTransactionAsync();
+
+                try
+                {
+                    string sqlText = "INSERT INTO sn_user_posts " +
+                        " (user_id, post_id, created, text) " +
+                        " VALUES " +
+                        " (@user_id, @post_id, @created, @text) " +
+                        " RETURNING post_id";
+
+                    await using var insertCommand = new NpgsqlCommand(sqlText, connection, insertTransaction)
+                    {
+                        Parameters =
+                        {
+                            new("@user_id", userId),
+                            new("@post_id", Guid.NewGuid()),
+                            new("@created", DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
+                            new("@text", text),
+                        }
+                    };
+
+                    object? result = await insertCommand.ExecuteScalarAsync()
+                        ?? throw new Exception("Не удалось получить идентификатор поста. Пусто");
+
+                    if (!Guid.TryParse(result.ToString(), out Guid _result))
+                        throw new Exception($"Не удалось получить идентификатор поста. Значение: {result}");
+
+                    await insertTransaction.CommitAsync();
+
+                    string authToken = OpenSession(_result, connection).Result.AuthToken;
+
+                    return Results.Json(new PostData() { Id = _result },
+                        new System.Text.Json.JsonSerializerOptions() { }, "application/json", 200);
+                }
+                catch (Exception ex)
+                {
+                    await insertTransaction.RollbackAsync();
+
+                    return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                        new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
+                }
+            }
+            catch (Exception ex)
+            {
+                return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                        new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
+            }
+            finally
+            {
+                connection.Close();
+            }
+        }
+
+        public async Task<IResult> PostGetAsync(Guid userId, Guid postId)
+        {
+            SemaphoreSlim taskSemaphore = new SemaphoreSlim(0);
+            Task<IResult> userSearcCallTask = Task.Run(async () => await PostGet(userId, postId, taskSemaphore));
+            Queues.RequestTaskQueue.Enqueue(userSearcCallTask);
+
+            Queues.RequestTaskQueueSemaphore.Release();
+
+            await taskSemaphore.WaitAsync();
+
+            return await userSearcCallTask;
+        }
+
+        private async Task<IResult> PostGet(Guid userId, Guid postId, SemaphoreSlim semaphoreSlim)
+        {
+            using NpgsqlConnection connection = new(connectionString);
+
+            try
+            {
+                connection.Open();
+
+                string sqlText = "SELECT " +
+                    " status, created, processed, text, status " +
+                    " FROM sn_user_posts " +
+                    " WHERE user_id = @user_id AND post_id = @post_id";
+
+                await using var selectCommand = new NpgsqlCommand(sqlText, connection)
+                {
+                    Parameters =
+                    {
+                        new("@user_id", userId),
+                        new("@post_id", postId),
+                    }
+                };
+
+                using NpgsqlDataReader reader = await selectCommand.ExecuteReaderAsync();
+
+                if (!reader.HasRows)
+                    return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
+
+                PostGetData? postInfo = null;
+
+                while (reader.Read())
+                {
+                    postInfo = new PostGetData()
+                    {
+                        Id = postId,
+                        Created = reader.GetDateTime(1),
+                        Processed = reader.GetDateTime(2),
+                        Text = reader.GetString(3),
+                        Status = reader.GetInt16(4)
+                    };
+                }
+
+                if (postInfo == null)
+                    throw new Exception($"Не удалось получить пост {postId} для пользователя {userId}");
+
+                return Results.Json(postInfo, new System.Text.Json.JsonSerializerOptions(), "application/json", 200);
+            }
+            catch (Exception ex)
+            {
+                return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                    new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
+            }
+            finally
+            {
+                connection.Close();
+                semaphoreSlim.Release();
+            }
+        }
+
+        public async Task<IResult> PostDeleteAsync(Guid userId, Guid postId)
+        {
+            using NpgsqlConnection connection = new(connectionString);
+
+            try
+            {
+                connection.Open();
+
+                bool checkForUserExists = await CheckUserForExists(userId, connection);
+
+                if (!checkForUserExists)
+                    return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
+
+                string sqlText = "UPDATE sn_user_posts " +
+                    " SET status = @status, processed = @processed " +
+                    " WHERE user_id = @user_id AND post_id = @post_id";
+
+                await using var updateCommand = new NpgsqlCommand(sqlText, connection)
+                {
+                    Parameters =
+                    {
+                        new("@user_id", userId),
+                        new("@post_id", postId),
+                        new("@status", -1),
+                        new("@processed", DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
+                    }
+                };
+
+                await updateCommand.ExecuteNonQueryAsync();
+
+                return Results.Ok();
+            }
+            catch (Exception ex)
+            {
+                return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                    new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
+            }
+            finally
+            {
+                connection.Close();
+            }
+        }
+
+        public async Task<IResult> PostUpdateAsync(Guid userId, Guid postId, PostEditData editData)
+        {
+            using NpgsqlConnection connection = new(connectionString);
+
+            try
+            {
+                connection.Open();
+
+                bool checkForUserExists = await CheckUserForExists(userId, connection);
+
+                if (!checkForUserExists)
+                    return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
+
+                string sqlText = "UPDATE sn_user_posts " +
+                    " SET status = @status, processed = @processed, text = @text " +
+                    " WHERE user_id = @user_id AND post_id = @post_id";
+
+                await using var updateCommand = new NpgsqlCommand(sqlText, connection)
+                {
+                    Parameters =
+                    {
+                        new("@user_id", userId),
+                        new("@post_id", postId),
+                        new("@text", editData.Text),
+                        new("@status", editData.Status),
+                        new("@processed", DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
+                    }
+                };
+
+                await updateCommand.ExecuteNonQueryAsync();
+
+                return Results.Ok();
+            }
+            catch (Exception ex)
+            {
+                return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                    new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
+            }
+            finally
+            {
+                connection.Close();
+            }
+        }
+
+        public async Task<IResult> FeedGetAsync(Guid userId)
+        {
+            using NpgsqlConnection connection = new(connectionString);
+            try
+            {
+                connection.Open();
+
+                string sqlText = "SELECT " +
+                    " user_id, user_name, user_sname, user_patronimic, user_birthday, " +
+                    " user_city, user_email, user_gender, user_login, user_password, " +
+                    " user_status, user_personal_interest " +
+                    " FROM sn_user_info WHERE user_id = @user_id";
+
+                await using var selectCommand = new NpgsqlCommand(sqlText, connection)
+                {
+                    Parameters =
+                    {
+                        new("@user_id", userId)
+                    }
+                };
+
+                using NpgsqlDataReader reader = await selectCommand.ExecuteReaderAsync();
+
+                if (!reader.HasRows)
+                    return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
+
+                var userInfo = new UserInfo();
+
+                while (reader.Read())
+                {
+                    userInfo.Id = reader.GetGuid(0);
+                    userInfo.FirstName = !reader.IsDBNull(1) ? reader.GetString(1) : string.Empty;
+                    userInfo.SecondName = !reader.IsDBNull(2) ? reader.GetString(2) : string.Empty;
+                    userInfo.Patronimic = !reader.IsDBNull(3) ? reader.GetString(3) : string.Empty;
+                    userInfo.Birthday = !reader.IsDBNull(4) ? reader.GetDateTime(4) : DateTime.Now;
+                    userInfo.City = !reader.IsDBNull(5) ? reader.GetString(5) : string.Empty;
+                    userInfo.Email = !reader.IsDBNull(6) ? reader.GetString(6) : string.Empty;
+                    userInfo.Gender = !reader.IsDBNull(7) ? (Gender)reader.GetInt16(7) : 0;
+                    userInfo.Status = reader.GetInt16(10);
+                    userInfo.PersonalInterest = !reader.IsDBNull(11) ? reader.GetString(11) : string.Empty;
+                }
+
+                return Results.Json(userInfo, new System.Text.Json.JsonSerializerOptions(), "application/json", 200);
+            }
+            catch (Exception ex)
+            {
+                return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                    new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
+            }
+            finally
+            {
+                connection.Close();
+            }
+        }
+
+        #endregion
+
+        #region Private section
 
         private async Task<AuthResponseData> OpenSession(Guid userId, NpgsqlConnection connection)
         {
@@ -521,5 +927,6 @@ namespace SocialnetworkHomework
             return hashString;
         }
 
+        #endregion
     }
 }

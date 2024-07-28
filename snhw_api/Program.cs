@@ -1,29 +1,18 @@
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Microsoft.OpenApi.Models;
-using Newtonsoft.Json.Converters;
-using Newtonsoft.Json.Linq;
-using Npgsql;
+
 using SocialnetworkHomework.Data;
-using SocialnetworkHomework.workers;
-using Swashbuckle.AspNetCore.Annotations;
-using System.Collections.Concurrent;
-using System.Reflection;
-using System.Threading.Tasks;
+using SocialnetworkHomework.Workers;
+using SocialnetworkHomework.Common;
 
 namespace SocialnetworkHomework
 {
     public class Program
     {
-        static private SemaphoreSlim requestTaskQueueSemaphore { get; set; } = new SemaphoreSlim(0, 100);
-        static private ConcurrentQueue<Task<IResult>> requestTaskQueue { get; set; } = new ConcurrentQueue<Task<IResult>>();
+        private const string version = "v1";
 
         private static void Main(string[] args)
         {
-            RequestActions requestActions = new RequestActions();
-
-            string version = "v1";
 
             WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -40,7 +29,7 @@ namespace SocialnetworkHomework
                 c.DescribeAllParametersInCamelCase();
             });
 
-            builder.Services.AddHostedService<RequestManager>(serviceProvider => new RequestManager(requestTaskQueueSemaphore, requestTaskQueue));
+            builder.Services.AddHostedService<RequestManager>(serviceProvider => new RequestManager(Queues.RequestTaskQueueSemaphore, Queues.RequestTaskQueue));
 
             WebApplication app = builder.Build();
             app.UseRouting();
@@ -61,6 +50,15 @@ namespace SocialnetworkHomework
             app.UseHttpsRedirection();
             app.UseHsts();
 
+            SetEndPoints(ref app);
+
+            app.Run();
+        }
+
+        private static void SetEndPoints(ref WebApplication app)
+        {
+            RequestActions requestActions = new RequestActions();
+            
             app.MapPost($"{version}" + "/user", (RegistrationData regData) => requestActions.UserCreate(regData))
             .WithName("UserCreate")
             .Produces(StatusCodes.Status200OK, typeof(AuthResponseData))
@@ -68,10 +66,7 @@ namespace SocialnetworkHomework
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            app.MapGet($"{version}" + "/user", async (Guid userId) => 
-            { 
-                return await UserGetAsync(requestActions, userId); 
-            })
+            app.MapGet($"{version}" + "/user", async (Guid userId) => await requestActions.UserGetAsync(userId))
             .WithName("UserGet")
             .Produces(StatusCodes.Status200OK, typeof(UserInfo))
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
@@ -111,10 +106,7 @@ namespace SocialnetworkHomework
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            app.MapPost($"{version}" + "/user/search", async (UserBaseData userData) => 
-            {
-                return await UserSearchAsync(requestActions, userData);
-            })
+            app.MapPost($"{version}" + "/user/search", async (UserBaseData userData) => await requestActions.UserSearchAsync(userData))
             .WithName("UserSearch")
             .Produces(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
@@ -122,33 +114,69 @@ namespace SocialnetworkHomework
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            app.Run();
-        }
+            #region Friend section
 
-        private static async Task<IResult> UserSearchAsync(RequestActions requestActions, UserBaseData userData)
-        {
-            SemaphoreSlim taskSemaphore = new SemaphoreSlim(0);
-            Task<IResult> userSearcCallTask = Task.Run(async () => await requestActions.UserSearch(userData, taskSemaphore)); 
-            requestTaskQueue.Enqueue(userSearcCallTask);
+            app.MapPost($"{version}" + "/friend", async (Guid userId, ContactData contactData) => await requestActions.FriendAddAsync(userId, contactData))
+            .WithName("FriendAdd")
+            .Produces(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
+            .Produces(StatusCodes.Status404NotFound, typeof(InfoData))
+            .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
+            ;
 
-            requestTaskQueueSemaphore.Release();
+            app.MapDelete($"{version}" + "/friend", async (Guid userId, Guid contactId) => await requestActions.FriendDeleteAsync(userId, contactId))
+            .WithName("FriendDelete")
+            .Produces(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
+            .Produces(StatusCodes.Status404NotFound, typeof(InfoData))
+            .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
+            ;
 
-            await taskSemaphore.WaitAsync();
+            #endregion
 
-            return await userSearcCallTask;
-        }
+            #region Post section
 
-        private static async Task<IResult> UserGetAsync(RequestActions requestActions, Guid userId)
-        {
-            SemaphoreSlim taskSemaphore = new SemaphoreSlim(0);
-            Task<IResult> userSearcCallTask = Task.Run(async () => await requestActions.UserGet(userId, taskSemaphore));
-            requestTaskQueue.Enqueue(userSearcCallTask);
+            app.MapPost($"{version}" + "/post", async (Guid userId, string text) => await requestActions.PostCreateAsync(userId, text))
+            .WithName("PostCreate")
+            .Produces(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
+            .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
+            ;
 
-            requestTaskQueueSemaphore.Release();
+            app.MapGet($"{version}" + "/post", async (Guid userId, Guid postId) => await requestActions.PostGetAsync(userId, postId))
+            .WithName("PostGet")
+            .Produces(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
+            .Produces(StatusCodes.Status404NotFound, typeof(InfoData))
+            .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
+            ;
 
-            await taskSemaphore.WaitAsync();
+            app.MapDelete($"{version}" + "/post", async (Guid postId) => await requestActions.PostDeleteAsync(postId))
+            .WithName("PostDelete")
+            .Produces(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
+            .Produces(StatusCodes.Status404NotFound, typeof(InfoData))
+            .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
+            ;
 
-            return await userSearcCallTask;
+            app.MapPut($"{version}" + "/post", async (Guid postId, PostEditData editData) => await requestActions.PostUpdateAsync(postId, editData))
+            .WithName("PostUpdate")
+            .Produces(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
+            .Produces(StatusCodes.Status404NotFound, typeof(InfoData))
+            .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
+            ;
+
+            app.MapPut($"{version}" + "/feed", async (Guid userId) => await requestActions.FeedGetAsync(userId))
+            .WithName("FeedGet")
+            .Produces(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
+            .Produces(StatusCodes.Status404NotFound, typeof(InfoData))
+            .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
+            ;
+
+            #endregion
+
         }
     }
 }

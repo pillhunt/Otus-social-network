@@ -1,17 +1,17 @@
 ﻿services:
 #snhw_nginx
-  snhw_nginx:
-    image: nginx:alpine
-    container_name: snhw_nginx
-    ports:
-      - 8080:80/tcp
-    volumes:
-      - snhw_nginx://usr/share/nginx/html:ro
-      - ./nginx/nginx.conf://etc/nginx/nginx.conf:ro
-    depends_on:
-      - snhw_api
-    networks:
-      - snhw_network
+  # snhw_nginx:
+  #   image: nginx:alpine
+  #   container_name: snhw_nginx
+  #   ports:
+  #     - 8080:80/tcp
+  #   volumes:
+  #     - snhw_nginx://usr/share/nginx/html:ro
+  #     - ./nginx/nginx.conf://etc/nginx/nginx.conf:ro
+  #   depends_on:
+  #     - snhw_api
+  #   networks:
+  #     - snhw_network
 #snhw_db_master
   snhw_db_master:
     image: postgres:alpine
@@ -132,47 +132,47 @@
     networks:
       - snhw_network
 #snhw_influxdb
-  snhw_influxdb:
-    image: influxdb:alpine
-    ports:
-      - 8086:8086
-    container_name: snhw_influxdb
-    security_opt:
-        - no-new-privileges:true
-    restart: unless-stopped
-    volumes:
-      - snhw_influxdbdata:/var/lib/influxdb2:rw
-    networks:
-      - snhw_network
+  # snhw_influxdb:
+  #   image: influxdb:alpine
+  #   ports:
+  #     - 8086:8086
+  #   container_name: snhw_influxdb
+  #   security_opt:
+  #       - no-new-privileges:true
+  #   restart: unless-stopped
+  #   volumes:
+  #     - snhw_influxdbdata:/var/lib/influxdb2:rw
+  #   networks:
+  #     - snhw_network
 #snhw_telegraf
-  snhw_telegraf:
-    image: telegraf:alpine
-    container_name: snhw_telegraf
-    user: root
-    entrypoint: "telegraf"
-    restart: unless-stopped
-    ports:
-      - 8125:8125
-    volumes:
-      - ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    depends_on:
-      - snhw_influxdb
-    networks:
-      - snhw_network
+  # snhw_telegraf:
+  #   image: telegraf:alpine
+  #   container_name: snhw_telegraf
+  #   user: root
+  #   entrypoint: "telegraf"
+  #   restart: unless-stopped
+  #   ports:
+  #     - 8125:8125
+  #   volumes:
+  #     - ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro
+  #   depends_on:
+  #     - snhw_influxdb
+  #   networks:
+  #     - snhw_network
 #snhw_grafana
-  snhw_grafana:
-    image: grafana/grafana-oss
-    restart: unless-stopped
-    ports:
-      - 3000:3000
-    container_name: snhw_grafana
-    depends_on:
-      - snhw_influxdb
-    volumes:
-      - snhw_grafanadata:/var/lib/grafana:rw
-    networks:
-      - snhw_network
+  # snhw_grafana:
+  #   image: grafana/grafana-oss
+  #   restart: unless-stopped
+  #   ports:
+  #     - 3000:3000
+  #   container_name: snhw_grafana
+  #   depends_on:
+  #     - snhw_influxdb
+  #   volumes:
+  #     - snhw_grafanadata:/var/lib/grafana:rw
+  #   networks:
+  #     - snhw_network
 volumes:
   snhw_nginx:
     name: snhw_nginx
@@ -188,13 +188,10 @@ volumes:
   snhw_apidata:
     name: snhw_apidata
   snhw_pgadmindata:
-    #external: true
     name: snhw_pgadmindata
   snhw_grafanadata:
-    #external: true
     name: snhw_grafanadata
   snhw_influxdbdata:
-    #external: true
     name: snhw_influxdbdata
 networks:
   snhw_network:

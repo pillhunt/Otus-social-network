@@ -21,7 +21,7 @@
       - REDIS_USER=${REDIS_USER}
       - REDIS_USER_PASSWORD=${REDIS_USER_PASSWORD}
     ports:
-      - "6380:6379"
+      - "6379:6379"
     volumes:
       - ./redis:/data
     deploy:
@@ -146,8 +146,6 @@
     restart: unless-stopped
     links:
       - snhw_db_master
-    environment:
-      - ASPNETCORE_CONNECTIONSTRINGS__DEFAULT=User ID=snhwdb;Password=pass;Database=snhwdb;Host=snhw_db_master;Port=5432;
     networks:
       - snhw_network
 #snhw_client

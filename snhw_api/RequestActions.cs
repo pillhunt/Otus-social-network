@@ -6,16 +6,24 @@ using NpgsqlTypes;
 
 using SocialnetworkHomework.Data;
 using SocialnetworkHomework.Common;
+using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Hosting;
+using StackExchange.Redis;
+using System.Collections.Concurrent;
+using System.Xml;
+using System.Text.Json;
 
 namespace SocialnetworkHomework
 {
     public class RequestActions
     {
-        string connectionString = string.Empty;
+        private string connectionString = string.Empty;
+        private System.Text.Json.JsonSerializerOptions jsonSerializerOptions = new System.Text.Json.JsonSerializerOptions();
 
-        public RequestActions()
+        public RequestActions(string connectionString)
         {
-            connectionString = Environment.GetEnvironmentVariable("ASPNETCORE_CONNECTIONSTRINGS__DEFAULT");
+            // connectionString = Environment.GetEnvironmentVariable("ASPNETCORE_CONNECTIONSTRINGS__DEFAULT");
+            this.connectionString = connectionString;
         }
 
         #region User section
@@ -26,7 +34,7 @@ namespace SocialnetworkHomework
 
             try
             {
-                connection.Open();
+                await connection.OpenAsync();
                 await using NpgsqlTransaction insertTransaction = await connection.BeginTransactionAsync();
 
                 try
@@ -57,27 +65,27 @@ namespace SocialnetworkHomework
 
                     await insertTransaction.CommitAsync();
 
-                    string authToken = OpenSession(_result, connection).Result.AuthToken;
+                    string authToken = (await OpenSession(_result, connection)).AuthToken;
 
                     return Results.Json(new AuthResponseData() { UserId = _result, AuthToken = authToken },
-                        new System.Text.Json.JsonSerializerOptions() { }, "application/json", 200);
+                        jsonSerializerOptions, "application/json", 200);
                 }
                 catch (Exception ex)
                 {
                     await insertTransaction.RollbackAsync();
 
                     return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
-                        new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
+                        jsonSerializerOptions, "application/json", 500);
                 }
             }
             catch (Exception ex)
             {
                 return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
-                        new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
+                        jsonSerializerOptions, "application/json", 500);
             }
             finally
             {
-                connection.Close();
+                await connection.CloseAsync();
             }
         }
 
@@ -89,7 +97,7 @@ namespace SocialnetworkHomework
             {
                 connection.Open();
 
-                bool checkForUserExists = await CheckUserForExists(userId, connection);
+                bool checkForUserExists = await CheckUserForAvailabilityAsync(userId, connection);
 
                 if (!checkForUserExists)
                     return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
@@ -111,7 +119,7 @@ namespace SocialnetworkHomework
             catch (Exception ex)
             {
                 return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
-                    new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
+                    jsonSerializerOptions, "application/json", 500);
             }
             finally
             {
@@ -126,7 +134,7 @@ namespace SocialnetworkHomework
             try
             {
                 connection.Open();
-                bool checkForUserExists = await CheckUserForExists(userId, connection);
+                bool checkForUserExists = await CheckUserForAvailabilityAsync(userId, connection);
 
                 if (!checkForUserExists)
                     return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
@@ -160,7 +168,7 @@ namespace SocialnetworkHomework
             catch (Exception ex)
             {
                 return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}.",
-                    new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
+                    jsonSerializerOptions, "application/json", 500);
             }
             finally
             {
@@ -224,12 +232,12 @@ namespace SocialnetworkHomework
                 AuthResponseData result = await OpenSession(userId, connection);
 
                 return Results.Json(result,
-                    new System.Text.Json.JsonSerializerOptions() { }, "application/json", 200);
+                    jsonSerializerOptions, "application/json", 200);
             }
             catch (Exception ex)
             {
                 return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
-                    new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
+                    jsonSerializerOptions, "application/json", 500);
             }
             finally
             {
@@ -265,7 +273,7 @@ namespace SocialnetworkHomework
             catch (Exception ex)
             {
                 return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
-                    new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
+                    jsonSerializerOptions, "application/json", 500);
             }
             finally
             {
@@ -308,7 +316,7 @@ namespace SocialnetworkHomework
             using NpgsqlConnection connection = new(connectionString);
             try
             {
-                connection.Open();
+                await connection.OpenAsync();
                 await using NpgsqlTransaction insertTransaction = await connection.BeginTransactionAsync();
 
                 try
@@ -345,17 +353,17 @@ namespace SocialnetworkHomework
                     await insertTransaction.RollbackAsync();
 
                     return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
-                        new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
+                        jsonSerializerOptions, "application/json", 500);
                 }
             }
             catch (Exception ex)
             {
                 return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
-                    new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
+                    jsonSerializerOptions, "application/json", 500);
             }
             finally
             {
-                connection.Close();
+                await connection.CloseAsync();
             }
         }
         
@@ -365,9 +373,9 @@ namespace SocialnetworkHomework
 
             try
             {
-                connection.Open();
+                await connection.OpenAsync();
 
-                bool checkForUserExists = await CheckUserForExists(userId, connection);
+                bool checkForUserExists = await CheckUserForAvailabilityAsync(userId, connection);
 
                 if (!checkForUserExists)
                     return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
@@ -394,11 +402,11 @@ namespace SocialnetworkHomework
             catch (Exception ex)
             {
                 return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
-                    new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
+                    jsonSerializerOptions, "application/json", 500);
             }
             finally
             {
-                connection.Close();
+                await connection.CloseAsync();
             }
         }
 
@@ -412,7 +420,7 @@ namespace SocialnetworkHomework
                 ?? Queues.PostingPersonsList.FirstOrDefault(p => p.UserId == userId) 
                 ?? new PostingPerson(userId);
 
-            return await postingPerson.PostThisText(text, DateTime.Now);
+            return await postingPerson.PrepareForPublish(text, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
         }
 
         public async Task<IResult> PostGetAsync(Guid userId, Guid postId)
@@ -434,9 +442,9 @@ namespace SocialnetworkHomework
 
             try
             {
-                connection.Open();
+                await connection.OpenAsync();
 
-                bool checkForUserExists = await CheckUserForExists(userId, connection);
+                bool checkForUserExists = await CheckUserForAvailabilityAsync(userId, connection);
 
                 if (!checkForUserExists)
                     return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
@@ -463,11 +471,11 @@ namespace SocialnetworkHomework
             catch (Exception ex)
             {
                 return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
-                    new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
+                    jsonSerializerOptions, "application/json", 500);
             }
             finally
             {
-                connection.Close();
+                await connection.CloseAsync();
             }
         }
 
@@ -479,7 +487,7 @@ namespace SocialnetworkHomework
             {
                 connection.Open();
 
-                bool checkForUserExists = await CheckUserForExists(userId, connection);
+                bool checkForUserExists = await CheckUserForAvailabilityAsync(userId, connection);
 
                 if (!checkForUserExists)
                     return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
@@ -507,7 +515,7 @@ namespace SocialnetworkHomework
             catch (Exception ex)
             {
                 return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
-                    new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
+                    jsonSerializerOptions, "application/json", 500);
             }
             finally
             {
@@ -515,58 +523,35 @@ namespace SocialnetworkHomework
             }
         }
 
-        public async Task<IResult> FeedGetAsync(Guid userId)
+        public async Task<IResult> FeedGetAsync(Guid userId, IDistributedCache cache)
         {
+            string cacheName = $"feed-user-{userId}";
+
             using NpgsqlConnection connection = new(connectionString);
+
             try
             {
-                connection.Open();
+                await connection.OpenAsync();
 
-                string sqlText = "SELECT " +
-                    " user_id, user_name, user_sname, user_patronimic, user_birthday, " +
-                    " user_city, user_email, user_gender, user_login, user_password, " +
-                    " user_status, user_personal_interest " +
-                    " FROM sn_user_info WHERE user_id = @user_id";
+                bool checkForUserExists = await CheckUserForAvailabilityAsync(userId, connection);
 
-                await using var selectCommand = new NpgsqlCommand(sqlText, connection)
-                {
-                    Parameters =
-                    {
-                        new("@user_id", userId)
-                    }
-                };
-
-                using NpgsqlDataReader reader = await selectCommand.ExecuteReaderAsync();
-
-                if (!reader.HasRows)
+                if (!checkForUserExists)
                     return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
 
-                var userInfo = new UserInfo();
+                var feed = await cache.GetStringAsync($"feed-user-{userId}")
+                    ?? (await SelectFeedByUserIdAsync(userId, cache, cacheName)).ToString()
+                    ?? string.Empty;
 
-                while (reader.Read())
-                {
-                    userInfo.Id = reader.GetGuid(0);
-                    userInfo.FirstName = !reader.IsDBNull(1) ? reader.GetString(1) : string.Empty;
-                    userInfo.SecondName = !reader.IsDBNull(2) ? reader.GetString(2) : string.Empty;
-                    userInfo.Patronimic = !reader.IsDBNull(3) ? reader.GetString(3) : string.Empty;
-                    userInfo.Birthday = !reader.IsDBNull(4) ? reader.GetDateTime(4) : DateTime.Now;
-                    userInfo.City = !reader.IsDBNull(5) ? reader.GetString(5) : string.Empty;
-                    userInfo.Email = !reader.IsDBNull(6) ? reader.GetString(6) : string.Empty;
-                    userInfo.Gender = !reader.IsDBNull(7) ? (Gender)reader.GetInt16(7) : 0;
-                    userInfo.Status = reader.GetInt16(10);
-                    userInfo.PersonalInterest = !reader.IsDBNull(11) ? reader.GetString(11) : string.Empty;
-                }
-
-                return Results.Json(userInfo, new System.Text.Json.JsonSerializerOptions(), "application/json", 200);
+                return Results.Json(feed, jsonSerializerOptions, "application/json", 200);
             }
             catch (Exception ex)
             {
                 return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
-                    new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
+                    jsonSerializerOptions, "application/json", 500);
             }
             finally
             {
-                connection.Close();
+                await connection.CloseAsync();
             }
         }
 
@@ -641,12 +626,12 @@ namespace SocialnetworkHomework
                 }
 
                 return Results.Json(userQuestionnaires.OrderBy(q => q.QuestionnaireId).ToList(),
-                    new System.Text.Json.JsonSerializerOptions() { }, "application/json", 200);
+                    jsonSerializerOptions, "application/json", 200);
             }
             catch (Exception ex)
             {
                 return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
-                    new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
+                    jsonSerializerOptions, "application/json", 500);
             }
             finally
             {
@@ -689,8 +674,8 @@ namespace SocialnetworkHomework
                     postInfo = new PostGetData()
                     {
                         Id = postId,
-                        Created = reader.GetDateTime(1),
-                        Processed = reader.GetDateTime(2),
+                        Created = reader.GetDateTime(1).Millisecond,
+                        Processed = reader.GetDateTime(2).Millisecond,
                         Text = reader.GetString(3),
                         Status = reader.GetInt16(4)
                     };
@@ -704,7 +689,7 @@ namespace SocialnetworkHomework
             catch (Exception ex)
             {
                 return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
-                    new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
+                    jsonSerializerOptions, "application/json", 500);
             }
             finally
             {
@@ -761,7 +746,7 @@ namespace SocialnetworkHomework
             catch (Exception ex)
             {
                 return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
-                    new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
+                    jsonSerializerOptions, "application/json", 500);
             }
             finally
             {
@@ -829,7 +814,7 @@ namespace SocialnetworkHomework
             }
         }
 
-        private async Task<bool> CheckUserForExists(Guid userId, NpgsqlConnection connection)
+        private async Task<bool> CheckUserForAvailabilityAsync(Guid userId, NpgsqlConnection connection)
         {
             try
             {
@@ -873,6 +858,89 @@ namespace SocialnetworkHomework
             hashString = Convert.ToBase64String(hashBytes);
 
             return hashString;
+        }
+
+        private async Task<IResult> SelectFeedByUserIdAsync(Guid userId, IDistributedCache cache, string cacheName)
+        {
+            SemaphoreSlim taskSemaphore = new SemaphoreSlim(0);
+            Task<IResult> userSearcCallTask = Task.Run(async Task<IResult>? () =>
+            {
+                try
+                {
+                    using NpgsqlConnection connection = new(connectionString);
+
+                    try
+                    {
+                        await connection.OpenAsync();
+
+                        bool checkForUserExists = await CheckUserForAvailabilityAsync(userId, connection);
+
+                        if (!checkForUserExists)
+                            return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
+
+                        string sqlText = $"SELECT * FROM" +
+                            $" (SELECT user_id, post_id, created, processed, text, row_number() " +
+                            $" OVER (PARTITION BY user_id ORDER BY processed DESC) FROM sn_user_posts) s " +
+                            $" WHERE user_id <> @user_id AND user_id IN (SELECT contact_user_id FROM sn_user_contacts WHERE user_id = @user_id) AND row_number <= 3 AND status = 1 " +
+                            $" ORDER BY processed DESC " +
+                            $" LIMIT 1000";
+
+                        await using var selectCommand = new NpgsqlCommand(sqlText, connection)
+                        {
+                            Parameters =
+                            {
+                                new("@user_id", userId)
+                            }
+                        };
+
+                        using NpgsqlDataReader reader = await selectCommand.ExecuteReaderAsync();
+
+                        if (!reader.HasRows)
+                            return Results.Json("Лента постов пустая", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
+                        
+                        List<FeedPostData> feedPostData = new List<FeedPostData>();
+
+                        while (reader.Read())
+                        {
+                            feedPostData.Add(new FeedPostData()
+                            {
+                                AuthorId = reader.GetGuid(0),
+                                Id = reader.GetGuid(1),
+                                Created = reader.GetDateTime(2).Millisecond,
+                                Processed = reader.GetDateTime(3).Millisecond,
+                                Text = reader.GetString(4),
+                                Status = 1
+                            });
+                        }
+
+                        var jsonFeed = JsonSerializer.Serialize(feedPostData);
+
+                        cache.SetString(cacheName, jsonFeed, new DistributedCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(2) });
+
+                        return Results.Json(jsonFeed, jsonSerializerOptions, "application/json", 200);
+                    }
+                    catch (Exception ex)
+                    {
+                        return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                            jsonSerializerOptions, "application/json", 500);
+                    }
+                    finally
+                    {
+                        await connection.CloseAsync();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                            jsonSerializerOptions, "application/json", 500);
+                }
+            });
+
+            Queues.RequestTaskQueue.Enqueue(userSearcCallTask);
+            Queues.RequestTaskQueueSemaphore.Release();
+
+            await taskSemaphore.WaitAsync();
+            return await userSearcCallTask;
         }
 
         #endregion

@@ -1,8 +1,4 @@
-﻿
-using SocialnetworkHomework.Common;
-using System.Threading;
-
-namespace SocialnetworkHomework.Workers
+﻿namespace SocialnetworkHomework.Workers
 {
     public class PostProcessor : BackgroundService
     {
@@ -14,10 +10,9 @@ namespace SocialnetworkHomework.Workers
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            while (!stoppingToken.IsCancellationRequested || Queues.ReadyForPostingPerson.Count > 0) 
-            { 
-                var person = Queues.ReadyForPostingPerson.Dequeue();
-                Queues.PostingPersonsList.Add(person);
+            while (!stoppingToken.IsCancellationRequested ) 
+            {
+
             }
         }
     }

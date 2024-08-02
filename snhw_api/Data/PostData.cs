@@ -9,9 +9,14 @@
     {
         public string Text { get; set; } = string.Empty;
         public int Status {  get; set; }
-        public DateTime Processed { get; set; }
-        public DateTime Created { get; set; }
+        public long Processed { get; set; }
+        public long Created { get; set; }
     }
 
     public class PostGetData : PostEditData;
+
+    public class FeedPostData : PostGetData
+    {
+        public Guid AuthorId { get; set; }
+    }
 }

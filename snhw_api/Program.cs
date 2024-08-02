@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.OpenApi.Models;
 
 using SocialnetworkHomework.Data;
@@ -12,9 +13,14 @@ namespace SocialnetworkHomework
         
         private static void Main(string[] args)
         {
-            RequestActions requestActions = new RequestActions();
-
             WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+            string db_master_cs = builder.Configuration.GetConnectionString("db_master") 
+                ?? throw new Exception("Не удалось получить строку подключения к БД.");
+
+            string redis_cs = builder.Configuration.GetConnectionString("redis")
+                ?? throw new Exception("Не удалось получить строку подключения к Redis.");
+
+            RequestActions requestActions = new RequestActions(db_master_cs);
 
             builder.Services.AddEndpointsApiExplorer();            
             builder.Services.AddControllers().AddNewtonsoftJson();
@@ -31,6 +37,10 @@ namespace SocialnetworkHomework
 
             builder.Services.AddHostedService<RequestManager>();
             builder.Services.AddHostedService(service => new PostProcessor(requestActions));
+
+            // добавляется Redis
+            builder.Services.AddStackExchangeRedisCache(options => 
+                options.Configuration = redis_cs);
 
             WebApplication app = builder.Build();
             app.UseRouting();
@@ -170,7 +180,7 @@ namespace SocialnetworkHomework
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            app.MapPut($"{version}" + "/feed", async (Guid userId) => await requestActions.FeedGetAsync(userId))
+            app.MapPut($"{version}" + "/feed", async (Guid userId, IDistributedCache cache) => await requestActions.FeedGetAsync(userId, cache))
             .WithName("FeedGet")
             .Produces(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))

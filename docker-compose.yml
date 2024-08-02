@@ -12,15 +12,52 @@
   #     - snhw_api
   #   networks:
   #     - snhw_network
+#snhw_redis
+  snhw_redis:
+    image: redis:latest
+    container_name: snhw_redis
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_USER=${REDIS_USER}
+      - REDIS_USER_PASSWORD=${REDIS_USER_PASSWORD}
+    ports:
+      - "6380:6379"
+    volumes:
+      - ./redis:/data
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    command: >
+      sh -c 'mkdir -p /usr/local/etc/redis &&
+      echo "bind 0.0.0.0" > /usr/local/etc/redis/redis.conf &&
+      echo "requirepass $REDIS_PASSWORD" >> /usr/local/etc/redis/redis.conf &&
+      echo "appendonly yes" >> /usr/local/etc/redis/redis.conf &&
+      echo "appendfsync everysec" >> /usr/local/etc/redis/redis.conf &&
+      echo "user default on nopass ~* +@all" > /usr/local/etc/redis/users.acl &&
+      echo "user $REDIS_USER on >$REDIS_USER_PASSWORD ~* +@all" >> /usr/local/etc/redis/users.acl &&
+      redis-server /usr/local/etc/redis/redis.conf --aclfile /usr/local/etc/redis/users.acl'
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "$REDIS_PASSWORD", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    tty: true
+    stdin_open: true
 #snhw_db_master
   snhw_db_master:
     image: postgres:alpine
     container_name: snhw_db_master
     restart: unless-stopped
     environment:
-      - POSTGRES_USER=snhwdb
-      - POSTGRES_DB=snhwdb
-      - POSTGRES_PASSWORD=pass
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - snhw_pgdata:/var/lib/postgresql/data
       # - ./docker/pg_master/postgresql_master.conf://var/lib/postgresql/data/postgresql.conf:rw
@@ -89,9 +126,9 @@
     depends_on:
       - snhw_db_master
     environment:
-      - PGADMIN_DEFAULT_EMAIL=user@user.com
-      - PGADMIN_DEFAULT_PASSWORD=pass
-      - PGADMIN_LISTEN_PORT=80
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}
+      - PGADMIN_LISTEN_PORT=${PGADMIN_LISTEN_PORT}
     volumes:
       - snhw_pgadmindata:/var/lib/pgadmin
     networks:

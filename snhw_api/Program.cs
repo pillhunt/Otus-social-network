@@ -3,16 +3,16 @@ using Microsoft.OpenApi.Models;
 
 using SocialnetworkHomework.Data;
 using SocialnetworkHomework.Workers;
-using SocialnetworkHomework.Common;
 
 namespace SocialnetworkHomework
 {
     public class Program
     {
         private const string version = "v1";
-
+        
         private static void Main(string[] args)
         {
+            RequestActions requestActions = new RequestActions();
 
             WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -29,7 +29,8 @@ namespace SocialnetworkHomework
                 c.DescribeAllParametersInCamelCase();
             });
 
-            builder.Services.AddHostedService<RequestManager>(serviceProvider => new RequestManager(Queues.RequestTaskQueueSemaphore, Queues.RequestTaskQueue));
+            builder.Services.AddHostedService<RequestManager>();
+            builder.Services.AddHostedService(service => new PostProcessor(requestActions));
 
             WebApplication app = builder.Build();
             app.UseRouting();
@@ -50,15 +51,15 @@ namespace SocialnetworkHomework
             app.UseHttpsRedirection();
             app.UseHsts();
 
-            SetEndPoints(ref app);
+            SetEndPoints(ref app, requestActions);
 
             app.Run();
         }
 
-        private static void SetEndPoints(ref WebApplication app)
+        private static void SetEndPoints(ref WebApplication app, RequestActions requestActions)
         {
-            RequestActions requestActions = new RequestActions();
-            
+            #region User section
+
             app.MapPost($"{version}" + "/user", (RegistrationData regData) => requestActions.UserCreate(regData))
             .WithName("UserCreate")
             .Produces(StatusCodes.Status200OK, typeof(AuthResponseData))
@@ -114,6 +115,8 @@ namespace SocialnetworkHomework
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
+            #endregion
+
             #region Friend section
 
             app.MapPost($"{version}" + "/friend", async (Guid userId, ContactData contactData) => await requestActions.FriendAddAsync(userId, contactData))
@@ -151,7 +154,7 @@ namespace SocialnetworkHomework
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            app.MapDelete($"{version}" + "/post", async (Guid postId) => await requestActions.PostDeleteAsync(postId))
+            app.MapDelete($"{version}" + "/post", async (Guid userId, Guid postId) => await requestActions.PostDeleteAsync(userId, postId))
             .WithName("PostDelete")
             .Produces(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
@@ -159,7 +162,7 @@ namespace SocialnetworkHomework
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            app.MapPut($"{version}" + "/post", async (Guid postId, PostEditData editData) => await requestActions.PostUpdateAsync(postId, editData))
+            app.MapPut($"{version}" + "/post", async (Guid userId, Guid postId, PostEditData editData) => await requestActions.PostUpdateAsync(userId, postId, editData))
             .WithName("PostUpdate")
             .Produces(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
@@ -176,7 +179,6 @@ namespace SocialnetworkHomework
             ;
 
             #endregion
-
         }
     }
 }

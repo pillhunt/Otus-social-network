@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using Microsoft.VisualStudio.Threading;
+using SocialnetworkHomework.Common;
 
 namespace SocialnetworkHomework.Workers
 {
@@ -7,14 +8,8 @@ namespace SocialnetworkHomework.Workers
     {
         private CancellationToken cancellationToken;
 
-        private readonly SemaphoreSlim taskQueueSemaphore;
-        private readonly ConcurrentQueue<Task<IResult>> taskQueue;
-
-        public RequestManager(SemaphoreSlim taskQueueSemaphore, ConcurrentQueue<Task<IResult>> taskQueue) 
-        {
-            this.taskQueue = taskQueue;
-            this.taskQueueSemaphore = taskQueueSemaphore;
-        }
+        private readonly SemaphoreSlim taskQueueSemaphore = Queues.RequestTaskQueueSemaphore;
+        private readonly ConcurrentQueue<Task<IResult>> taskQueue = Queues.RequestTaskQueue;
 
         protected override async Task ExecuteAsync(CancellationToken cancellationToken)
         {
@@ -63,8 +58,10 @@ namespace SocialnetworkHomework.Workers
 
                     Task taskQueueWaitingTask;
                     await Task.WhenAny(taskQueueWaitingTask = taskQueueSemaphore.WaitAsync(), executorFinishSignal.WaitAsync());
+                    
                     taskQueueSemaphore.Release();
                     await taskQueueWaitingTask;
+                    
                     if (taskQueueSemaphore.CurrentCount > 0)
                         break;
                 }

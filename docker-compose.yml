@@ -149,23 +149,23 @@
     networks:
       - snhw_network
 #snhw_client
-  snhw_client:
-    container_name: snhw_client
-    build:
-      context: ./
-      dockerfile: ./snhw_client/Dockerfile
-    working_dir: /srv/snhw_client
-    volumes:
-      - ./snhw_client:/srv/snhw_client
-      - /srv/snhw_client/node_modules
-    stdin_open: true
-    environment:
-      - HOST=0.0.0.0
-      - CHOKIDAR_USEPOLLING=true
-    ports:
-      - 8082:8080
-    networks:
-      - snhw_network
+  # snhw_client:
+  #   container_name: snhw_client
+  #   build:
+  #     context: ./
+  #     dockerfile: ./snhw_client/Dockerfile
+  #   working_dir: /srv/snhw_client
+  #   volumes:
+  #     - ./snhw_client:/srv/snhw_client
+  #     - /srv/snhw_client/node_modules
+  #   stdin_open: true
+  #   environment:
+  #     - HOST=0.0.0.0
+  #     - CHOKIDAR_USEPOLLING=true
+  #   ports:
+  #     - 8082:8080
+  #   networks:
+  #     - snhw_network
 #snhw_influxdb
   # snhw_influxdb:
   #   image: influxdb:alpine

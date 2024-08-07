@@ -1,17 +1,14 @@
+using System.Text.Json;
 using System.Security.Cryptography;
 
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.AspNetCore.Mvc;
+
 using Npgsql;
 using NpgsqlTypes;
 
 using SocialnetworkHomework.Data;
 using SocialnetworkHomework.Common;
-using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Hosting;
-using StackExchange.Redis;
-using System.Collections.Concurrent;
-using System.Xml;
-using System.Text.Json;
 
 namespace SocialnetworkHomework
 {
@@ -445,9 +442,12 @@ namespace SocialnetworkHomework
                 await connection.OpenAsync();
 
                 bool checkForUserExists = await CheckUserForAvailabilityAsync(userId, connection);
-
                 if (!checkForUserExists)
                     return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
+
+                bool checkForPostExists = await CheckPostForAvailabilityAsync(postId, connection);
+                if (!checkForPostExists)
+                    return Results.Json("Публикация не найдена", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
 
                 string sqlText = "UPDATE sn_user_posts " +
                     " SET status = @status, processed = @processed " +
@@ -479,18 +479,21 @@ namespace SocialnetworkHomework
             }
         }
 
-        public async Task<IResult> PostUpdateAsync(Guid userId, Guid postId, PostEditData editData)
+        public async Task<IResult> PostUpdateAsync(Guid userId, PostEditData editData)
         {
             using NpgsqlConnection connection = new(connectionString);
 
             try
             {
-                connection.Open();
+                await connection.OpenAsync();
 
                 bool checkForUserExists = await CheckUserForAvailabilityAsync(userId, connection);
-
                 if (!checkForUserExists)
                     return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
+
+                bool checkForPostExists = await CheckPostForAvailabilityAsync(editData.Id, connection);
+                if (!checkForPostExists) 
+                    return Results.Json("Публикация не найдена", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
 
                 string sqlText = "UPDATE sn_user_posts " +
                     " SET status = @status, processed = @processed, text = @text " +
@@ -501,7 +504,7 @@ namespace SocialnetworkHomework
                     Parameters =
                     {
                         new("@user_id", userId),
-                        new("@post_id", postId),
+                        new("@post_id", editData.Id),
                         new("@text", editData.Text),
                         new("@status", editData.Status),
                         new("@processed", DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
@@ -519,7 +522,7 @@ namespace SocialnetworkHomework
             }
             finally
             {
-                connection.Close();
+                await connection.CloseAsync();
             }
         }
 
@@ -842,6 +845,34 @@ namespace SocialnetworkHomework
             }
         }
 
+        private async Task<bool> CheckPostForAvailabilityAsync(Guid postId, NpgsqlConnection connection)
+        {
+            try
+            {
+                string sqlText = "SELECT 1 FROM sn_user_posts WHERE post_id = @post_id";
+
+                await using var selectCommand = new NpgsqlCommand(sqlText, connection)
+                {
+                    Parameters =
+                    {
+                        new("@post_id", postId)
+                    }
+                };
+
+                using (NpgsqlDataReader reader = await selectCommand.ExecuteReaderAsync())
+                {
+                    if (!reader.HasRows)
+                        return false;
+                    else
+                        return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
         private string GetHash(string password)
         {
             string hashString = string.Empty;
@@ -874,7 +905,6 @@ namespace SocialnetworkHomework
                         await connection.OpenAsync();
 
                         bool checkForUserExists = await CheckUserForAvailabilityAsync(userId, connection);
-
                         if (!checkForUserExists)
                             return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
 

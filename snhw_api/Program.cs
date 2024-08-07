@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.OpenApi.Models;
 
@@ -39,8 +40,7 @@ namespace SocialnetworkHomework
             builder.Services.AddHostedService(service => new PostProcessor(requestActions));
 
             // добавляется Redis
-            builder.Services.AddStackExchangeRedisCache(options => 
-                options.Configuration = redis_cs);
+            builder.Services.AddStackExchangeRedisCache(options => options.Configuration = redis_cs);
 
             WebApplication app = builder.Build();
             app.UseRouting();
@@ -129,7 +129,7 @@ namespace SocialnetworkHomework
 
             #region Friend section
 
-            app.MapPost($"{version}" + "/friend", async (Guid userId, ContactData contactData) => await requestActions.FriendAddAsync(userId, contactData))
+            app.MapPost($"{version}" + "/friend", async (Guid userId, [FromBody] ContactData contactData) => await requestActions.FriendAddAsync(userId, contactData))
             .WithName("FriendAdd")
             .Produces(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
@@ -149,14 +149,14 @@ namespace SocialnetworkHomework
 
             #region Post section
 
-            app.MapPost($"{version}" + "/post", async (Guid userId, string text) => await requestActions.PostCreateAsync(userId, text))
+            app.MapPost($"{version}" + "/post", async (Guid userId, [FromBody] string text) => await requestActions.PostCreateAsync(userId, text))
             .WithName("PostCreate")
             .Produces(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            app.MapGet($"{version}" + "/post", async (Guid userId, Guid postId) => await requestActions.PostGetAsync(userId, postId))
+            app.MapGet($"{version}" + "/post", async (Guid userId, [FromBody] Guid postId) => await requestActions.PostGetAsync(userId, postId))
             .WithName("PostGet")
             .Produces(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
@@ -164,7 +164,7 @@ namespace SocialnetworkHomework
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            app.MapDelete($"{version}" + "/post", async (Guid userId, Guid postId) => await requestActions.PostDeleteAsync(userId, postId))
+            app.MapDelete($"{version}" + "/post", async (Guid userId, [FromBody] Guid postId) => await requestActions.PostDeleteAsync(userId, postId))
             .WithName("PostDelete")
             .Produces(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
@@ -172,7 +172,7 @@ namespace SocialnetworkHomework
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            app.MapPut($"{version}" + "/post", async (Guid userId, Guid postId, PostEditData editData) => await requestActions.PostUpdateAsync(userId, postId, editData))
+            app.MapPut($"{version}" + "/post", async (Guid userId, [FromBody] PostEditData editData) => await requestActions.PostUpdateAsync(userId, editData))
             .WithName("PostUpdate")
             .Produces(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
@@ -180,7 +180,7 @@ namespace SocialnetworkHomework
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            app.MapPut($"{version}" + "/feed", async (Guid userId, IDistributedCache cache) => await requestActions.FeedGetAsync(userId, cache))
+            app.MapGet($"{version}" + "/feed", async (Guid userId, IDistributedCache cache) => await requestActions.FeedGetAsync(userId, cache))
             .WithName("FeedGet")
             .Produces(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))

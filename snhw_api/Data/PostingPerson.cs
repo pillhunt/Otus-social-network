@@ -1,9 +1,7 @@
-﻿using Microsoft.Extensions.Caching.Distributed;
-using Npgsql;
-using SocialnetworkHomework.Common;
-using static System.Net.Mime.MediaTypeNames;
+﻿using Npgsql;
+using snhw.Common;
 
-namespace SocialnetworkHomework.Data
+namespace snhw.Data
 {
     public class PostingPerson
     {

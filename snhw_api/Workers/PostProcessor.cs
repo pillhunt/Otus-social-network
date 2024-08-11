@@ -1,11 +1,10 @@
-﻿namespace SocialnetworkHomework.Workers
+﻿namespace snhw.Workers
 {
     public class PostProcessor : BackgroundService
     {
-        private RequestActions requestActions ;
-        public PostProcessor(RequestActions requestActions) 
-        { 
-            this.requestActions = requestActions;
+        public PostProcessor() 
+        {
+
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)

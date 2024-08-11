@@ -21,7 +21,7 @@
       - REDIS_USER=${REDIS_USER}
       - REDIS_USER_PASSWORD=${REDIS_USER_PASSWORD}
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - ./redis:/data
     deploy:
@@ -49,6 +49,8 @@
     restart: unless-stopped
     tty: true
     stdin_open: true
+    networks:
+      - snhw_network
 #snhw_db_master
   snhw_db_master:
     image: postgres:alpine
@@ -146,6 +148,7 @@
     restart: unless-stopped
     links:
       - snhw_db_master
+      - snhw_redis
     networks:
       - snhw_network
 #snhw_client

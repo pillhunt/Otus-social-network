@@ -1,7 +1,7 @@
-﻿using SocialnetworkHomework.Data;
+﻿using snhw.Data;
 using System.Collections.Concurrent;
 
-namespace SocialnetworkHomework.Common
+namespace snhw.Common
 {
     internal static class Queues
     {

@@ -1,4 +1,4 @@
-﻿namespace SocialnetworkHomework.Data
+﻿namespace snhw.Data
 {
 
     public class AuthRequestData

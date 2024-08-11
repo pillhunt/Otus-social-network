@@ -7,20 +7,31 @@ using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using NpgsqlTypes;
 
-using SocialnetworkHomework.Data;
-using SocialnetworkHomework.Common;
+using snhw.Data;
+using snhw.Common;
+using StackExchange.Redis;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Threading;
 
-namespace SocialnetworkHomework
+namespace snhw
 {
-    public class RequestActions
+    public class Actions
     {
         private string connectionString = string.Empty;
-        private System.Text.Json.JsonSerializerOptions jsonSerializerOptions = new System.Text.Json.JsonSerializerOptions();
+        private JsonSerializerOptions jsonSerializerOptions = new JsonSerializerOptions();
 
-        public RequestActions(string connectionString)
+        public Actions()
         {
+            IConfigurationRoot configuration = new ConfigurationBuilder()
+                .SetBasePath(AppContext.BaseDirectory)
+                .AddJsonFile("appsettings.json")
+                .Build();
+
             // connectionString = Environment.GetEnvironmentVariable("ASPNETCORE_CONNECTIONSTRINGS__DEFAULT");
-            this.connectionString = connectionString;
+            connectionString = configuration.GetConnectionString("db_master") ??
+                throw new Exception("Не удалось получить настройку подключения к БД");
         }
 
         #region User section
@@ -306,9 +317,9 @@ namespace SocialnetworkHomework
 
         #endregion
 
-        #region Friend section
+        #region Contact section
 
-        public async Task<IResult> FriendAddAsync(Guid userId, ContactData contactData)
+        public async Task<IResult> ContactAddAsync(Guid userId, ContactData contactData)
         {
             using NpgsqlConnection connection = new(connectionString);
             try
@@ -319,9 +330,9 @@ namespace SocialnetworkHomework
                 try
                 {
                     string sqlText = "INSERT INTO sn_user_contacts " +
-                        " (user_id, contact_user_id, created, processed, comment) " +
+                        " (user_id, contact_user_id, created, comment) " +
                         " VALUES " +
-                        " (@user_id, @contact_user_id, @created, @processed, @comment)" +
+                        " (@user_id, @contact_user_id, @created, @comment) " +
                         " RETURNING id";
 
                     await using var insertCommand = new NpgsqlCommand(sqlText, connection, insertTransaction)
@@ -330,7 +341,7 @@ namespace SocialnetworkHomework
                         {
                             new("@user_id", userId),
                             new("@contact_user_id", contactData.Id),
-                            new("@created", DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
+                            new("@created", DateTimeOffset.UtcNow),
                             new("@comment", contactData.Comment)
                         }
                     };
@@ -338,14 +349,11 @@ namespace SocialnetworkHomework
                     object? result = await insertCommand.ExecuteScalarAsync()
                             ?? throw new Exception("Не удалось получить идентификатор пользователя. Пусто");
 
-                    if (!Guid.TryParse(result.ToString(), out Guid _result))
-                        throw new Exception($"Не удалось получить идентификатор пользователя. Значение: {result}");
-
                     await insertTransaction.CommitAsync();
 
                     return Results.Ok();
                 }
-                catch (Exception ex) 
+                catch (Exception ex)
                 {
                     await insertTransaction.RollbackAsync();
 
@@ -363,8 +371,8 @@ namespace SocialnetworkHomework
                 await connection.CloseAsync();
             }
         }
-        
-        public async Task<IResult> FriendDeleteAsync(Guid userId, Guid contactId)
+
+        public async Task<IResult> ContactUpdateAsync(Guid userId, ContactData contactData)
         {
             using NpgsqlConnection connection = new(connectionString);
 
@@ -373,24 +381,36 @@ namespace SocialnetworkHomework
                 await connection.OpenAsync();
 
                 bool checkForUserExists = await CheckUserForAvailabilityAsync(userId, connection);
-
                 if (!checkForUserExists)
-                    return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
+                    return Results.Json("Пользователь не найден", jsonSerializerOptions, "application/json", 404);
+
+                checkForUserExists = await CheckUserForAvailabilityAsync(contactData.Id, connection);
+                if (!checkForUserExists)
+                    return Results.Json("Пользователь не найден", jsonSerializerOptions, "application/json", 404);
+
+                string comment = !string.IsNullOrEmpty(contactData.Comment)
+                    ? "@comment"
+                    : "comment";
 
                 string sqlText = "UPDATE sn_user_contacts " +
-                    "SET status = @status, processed = @processed " +
-                    "WHERE user_id = @user_id AND contact_user_id = @contact_user_id";
+                    $" SET status = @status, processed = @processed, comment = {comment} " +
+                    " WHERE user_id = @user_id AND contact_user_id = @contact_user_id";
 
                 await using var updateCommand = new NpgsqlCommand(sqlText, connection)
                 {
                     Parameters =
                     {
                         new("@user_id", userId),
-                        new("@contact_user_id", contactId),
-                        new("@status", -1),
-                        new("@processed", DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
+                        new("@contact_user_id", contactData.Id),
+                        new("@status", contactData.Status),
+                        new("@processed", DateTimeOffset.UtcNow),
                     }
                 };
+
+                if (!string.IsNullOrEmpty(contactData.Comment))
+                {
+                    updateCommand.Parameters.Add(new("@comment", contactData.Comment));
+                }
 
                 await updateCommand.ExecuteNonQueryAsync();
 
@@ -407,14 +427,38 @@ namespace SocialnetworkHomework
             }
         }
 
+        public async Task<IResult> ContactGetAsync(Guid userId, Guid contactUserId)
+        {
+            SemaphoreSlim taskSemaphore = new SemaphoreSlim(0);
+            Task<IResult> userSearcCallTask = Task.Run(async () => await ContactGet(userId, contactUserId, taskSemaphore));
+            Queues.RequestTaskQueue.Enqueue(userSearcCallTask);
+
+            Queues.RequestTaskQueueSemaphore.Release();
+
+            await taskSemaphore.WaitAsync();
+
+            return await userSearcCallTask;
+        }
+
+        public async Task<IResult> ContactDeleteAsync(Guid userId, Guid contactId)
+        {
+            ContactData contactData = new ContactData()
+            {
+                Id = contactId,
+                Status = -1,
+            };
+
+            return await ContactUpdateAsync(userId, contactData);
+        }
+
         #endregion
 
         #region Post section
 
         public async Task<IResult> PostCreateAsync(Guid userId, string text)
         {
-            PostingPerson postingPerson = Queues.ReadyForPostingPerson.FirstOrDefault(p => p.UserId == userId) 
-                ?? Queues.PostingPersonsList.FirstOrDefault(p => p.UserId == userId) 
+            PostingPerson postingPerson = Queues.ReadyForPostingPerson.FirstOrDefault(p => p.UserId == userId)
+                ?? Queues.PostingPersonsList.FirstOrDefault(p => p.UserId == userId)
                 ?? new PostingPerson(userId);
 
             return await postingPerson.PrepareForPublish(text, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
@@ -492,7 +536,7 @@ namespace SocialnetworkHomework
                     return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
 
                 bool checkForPostExists = await CheckPostForAvailabilityAsync(editData.Id, connection);
-                if (!checkForPostExists) 
+                if (!checkForPostExists)
                     return Results.Json("Публикация не найдена", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
 
                 string sqlText = "UPDATE sn_user_posts " +
@@ -539,13 +583,14 @@ namespace SocialnetworkHomework
                 bool checkForUserExists = await CheckUserForAvailabilityAsync(userId, connection);
 
                 if (!checkForUserExists)
-                    return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
+                    return Results.Json("Пользователь не найден", jsonSerializerOptions, "application/json", 404);
 
-                var feed = await cache.GetStringAsync($"feed-user-{userId}")
-                    ?? (await SelectFeedByUserIdAsync(userId, cache, cacheName)).ToString()
-                    ?? string.Empty;
+                string? feed = await cache.GetStringAsync($"feed-user-{userId}");
 
-                return Results.Json(feed, jsonSerializerOptions, "application/json", 200);
+                if (!string.IsNullOrEmpty(feed))
+                    return Results.Json(feed, jsonSerializerOptions, "application/json", 200);
+                else
+                    return await SelectFeedByUserIdAsync(userId, cache, cacheName);
             }
             catch (Exception ex)
             {
@@ -758,6 +803,55 @@ namespace SocialnetworkHomework
             }
         }
 
+        private async Task<IResult> ContactGet(Guid userId, Guid contactUserId, SemaphoreSlim semaphoreSlim)
+        {
+            using NpgsqlConnection connection = new(connectionString);
+
+            try
+            {
+                await connection.OpenAsync();
+
+                string sqlText = "SELECT " +
+                    " user_id, contact_user_id, status, created, processed, comment " +
+                    " FROM sn_user_info WHERE user_id = @user_id AND contact_user_id = @contact_user_id";
+
+                await using var selectCommand = new NpgsqlCommand(sqlText, connection)
+                {
+                    Parameters =
+                    {
+                        new("@user_id", userId),
+                        new("@contact_user_id", contactUserId)
+                    }
+                };
+
+                using NpgsqlDataReader reader = await selectCommand.ExecuteReaderAsync();
+
+                if (!reader.HasRows)
+                    return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
+
+                var userInfo = new ContactData();
+
+                while (await reader.ReadAsync())
+                {
+                    userInfo.Id = reader.GetGuid(1);
+                    userInfo.Status = reader.GetInt16(2);
+                    userInfo.Comment = reader.GetString(5);
+                }
+
+                return Results.Json(userInfo, new System.Text.Json.JsonSerializerOptions(), "application/json", 200);
+            }
+            catch (Exception ex)
+            {
+                return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                    jsonSerializerOptions, "application/json", 500);
+            }
+            finally
+            {
+                await connection.CloseAsync();
+                semaphoreSlim.Release();
+            }
+        }
+
         private async Task<AuthResponseData> OpenSession(Guid userId, NpgsqlConnection connection)
         {
             if (userId.ToString() == "00000000-0000-0000-0000-000000000000")
@@ -908,12 +1002,12 @@ namespace SocialnetworkHomework
                         if (!checkForUserExists)
                             return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
 
-                        string sqlText = $"SELECT * FROM" +
-                            $" (SELECT user_id, post_id, created, processed, text, row_number() " +
-                            $" OVER (PARTITION BY user_id ORDER BY processed DESC) FROM sn_user_posts) s " +
-                            $" WHERE user_id <> @user_id AND user_id IN (SELECT contact_user_id FROM sn_user_contacts WHERE user_id = @user_id) AND row_number <= 3 AND status = 1 " +
-                            $" ORDER BY processed DESC " +
-                            $" LIMIT 1000";
+                        string sqlText = $"select * from (SELECT user_id, post_id, created, processed, text, row_number() " +
+                        $"OVER(PARTITION BY user_id ORDER BY processed DESC) rn " +
+                        $"FROM sn_user_posts s " +
+                        $"WHERE user_id<> @user_id AND status = 1 " +
+                        $"AND user_id IN (SELECT contact_user_id FROM sn_user_contacts WHERE user_id = @user_id) ) " +
+                        $"WHERE rn <= 3 ORDER BY processed DESC LIMIT 1000";
 
                         await using var selectCommand = new NpgsqlCommand(sqlText, connection)
                         {
@@ -926,11 +1020,11 @@ namespace SocialnetworkHomework
                         using NpgsqlDataReader reader = await selectCommand.ExecuteReaderAsync();
 
                         if (!reader.HasRows)
-                            return Results.Json("Лента постов пустая", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
-                        
+                            return Results.Json("[]", new JsonSerializerOptions(), "application/json", 200);
+
                         List<FeedPostData> feedPostData = new List<FeedPostData>();
 
-                        while (reader.Read())
+                        while (await reader.ReadAsync())
                         {
                             feedPostData.Add(new FeedPostData()
                             {
@@ -957,6 +1051,7 @@ namespace SocialnetworkHomework
                     finally
                     {
                         await connection.CloseAsync();
+                        taskSemaphore.Release();
                     }
                 }
                 catch (Exception ex)
@@ -970,6 +1065,7 @@ namespace SocialnetworkHomework
             Queues.RequestTaskQueueSemaphore.Release();
 
             await taskSemaphore.WaitAsync();
+
             return await userSearcCallTask;
         }
 

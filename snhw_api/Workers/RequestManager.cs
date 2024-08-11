@@ -1,8 +1,8 @@
 ﻿using System.Collections.Concurrent;
 using Microsoft.VisualStudio.Threading;
-using SocialnetworkHomework.Common;
+using snhw.Common;
 
-namespace SocialnetworkHomework.Workers
+namespace snhw.Workers
 {
     internal sealed class RequestManager : BackgroundService
     {

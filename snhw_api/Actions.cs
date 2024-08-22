@@ -1031,7 +1031,7 @@ namespace snhw
                                 AuthorId = reader.GetGuid(0),
                                 Id = reader.GetGuid(1),
                                 Created = reader.GetDateTime(2).Millisecond,
-                                Processed = reader.GetDateTime(3).Millisecond,
+                                // Processed = reader.GetDateTime(3).Millisecond,
                                 Text = reader.GetString(4),
                                 Status = 1
                             });

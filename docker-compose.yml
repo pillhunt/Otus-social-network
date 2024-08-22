@@ -66,6 +66,8 @@
       # - ./docker/pg_master/pg_hba.conf://var/lib/postgresql/data/pg_hba.conf:rw
       - ./sql_init_scripts:/docker-entrypoint-initdb.d
       - ./sql_init_data/people.csv:/people.csv
+      - ./sql_init_data/user_contacts.csv:/user_contacts.csv
+      - ./sql_init_data/user_posts.csv:/user_posts.csv
     ports:
       - 5432:5432
     networks:

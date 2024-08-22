@@ -8,9 +8,9 @@
     public class PostEditData : PostData
     {
         public string Text { get; set; } = string.Empty;
-        public int Status {  get; set; }
-        public long Processed { get; set; }
-        public long Created { get; set; }
+        public int Status { get; set; } = 0;
+        public long? Processed { get; set; } = 0;
+        public long Created { get; set; } = 0;
     }
 
     public class PostGetData : PostEditData;

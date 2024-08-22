@@ -23,9 +23,8 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sql_init_data", "sql_init_data", "{C00442BE-F3D7-4431-9BB3-6040B1D68B59}"
 	ProjectSection(SolutionItems) = preProject
 		sql_init_data\people.7z = sql_init_data\people.7z
-		sql_init_data\people.csv = sql_init_data\people.csv
-		sql_init_data\posts.7z = sql_init_data\posts.7z
-		sql_init_data\posts.txt = sql_init_data\posts.txt
+		sql_init_data\user_contacts.7z = sql_init_data\user_contacts.7z
+		sql_init_data\user_posts.7z = sql_init_data\user_posts.7z
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "pg_master", "pg_master", "{4BC74F1A-F95F-4C0F-8D06-C267AE625C88}"

@@ -81,3 +81,37 @@ ALTER SEQUENCE public.sn_user_sessions_id_seq
 
 ALTER SEQUENCE public.sn_user_sessions_id_seq
     OWNER TO snhwdb;
+
+CREATE TABLE IF NOT EXISTS public.sn_user_posts
+(
+    id bigint NOT NULL DEFAULT nextval('sn_user_posts_id_seq'::regclass),
+    user_id uuid NOT NULL,
+    post_id uuid NOT NULL,
+    status smallint DEFAULT 1,
+    created timestamp with time zone,
+    processed timestamp with time zone,
+    text text COLLATE pg_catalog."default",
+    CONSTRAINT sn_user_posts_pkey PRIMARY KEY (user_id, post_id)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.sn_user_posts
+    OWNER to snhwdb;
+
+CREATE TABLE IF NOT EXISTS public.sn_user_contacts
+(
+    id bigint NOT NULL DEFAULT nextval('sn_user_contacts_id_seq'::regclass),
+    user_id uuid NOT NULL,
+    contact_user_id uuid NOT NULL,
+    status smallint NOT NULL DEFAULT 1,
+    created timestamp with time zone,
+    processed timestamp with time zone,
+    comment text COLLATE pg_catalog."default",
+    CONSTRAINT sn_user_contacts_pkey PRIMARY KEY (user_id, contact_user_id)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.sn_user_contacts
+    OWNER to snhwdb;

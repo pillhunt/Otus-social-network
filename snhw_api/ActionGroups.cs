@@ -118,7 +118,7 @@ namespace snhw
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            group.MapGet("/post", async (Guid userId, [FromBody] Guid postId) => await actions.PostGetAsync(userId, postId))
+            group.MapGet("/post", async (Guid userId, Guid postId) => await actions.PostGetAsync(userId, postId))
             .WithName("PostGet")
             .Produces(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))

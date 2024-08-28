@@ -13,6 +13,7 @@ namespace snhw.Data
         private Guid userId;
 
         private Queue<PostEditData> textsForPosting = new Queue<PostEditData>();
+        private List<PostEditData> textInPosting = new List<PostEditData>();
 
         public int ReadyToPublish { get => textsForPosting.Count; }
 
@@ -21,8 +22,7 @@ namespace snhw.Data
         public PostingPerson(Guid userId)
         {
             this.userId = userId;
-
-            Queues.ReadyForPostingPerson.Add(this);
+            Queues.ReadyForPostingPerson.Add(this);            
         }
     
         public async Task<IResult> PrepareForPublish(string text, long postTime)
@@ -37,7 +37,14 @@ namespace snhw.Data
                     Text = text
                 });
 
-                return Results.Ok();
+                SemaphoreSlim taskSemaphore = new SemaphoreSlim(0);
+
+                Task<IResult> postCreateCallTask = Task.Run(async () => await PostText(taskSemaphore));
+                Queues.PostingTaskQueue.Enqueue(postCreateCallTask);
+                Queues.PostingTaskQueueSemaphore.Release();
+                await taskSemaphore.WaitAsync();
+
+                return await postCreateCallTask;
             }
             catch (Exception ex) 
             {
@@ -46,7 +53,7 @@ namespace snhw.Data
             }
         }
 
-        public async Task<IResult> PostText() 
+        public async Task<IResult> PostText(SemaphoreSlim taskSemaphore) 
         {
             PostEditData? postEditData = null;
 
@@ -58,6 +65,13 @@ namespace snhw.Data
                 return Results.Json($"Нет сообщений для публикации",
                     new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
             }
+
+            while (textInPosting.Count == 3)
+            {
+                await Task.Delay(2000);
+            }
+
+            textInPosting.Add(postEditData);
 
             Guid newPostId = Guid.NewGuid();
             try
@@ -83,7 +97,7 @@ namespace snhw.Data
                             {
                                 new("@user_id", userId),
                                 new("@post_id", newPostId),
-                                new("@created", postEditData.Created),
+                                new("@created", DateTimeOffset.FromUnixTimeSeconds(postEditData.Created)),
                                 new("@text", postEditData.Text),
                             }
                         };
@@ -114,6 +128,8 @@ namespace snhw.Data
                 }
                 finally
                 {
+                    taskSemaphore.Release();
+                    textInPosting.Remove(postEditData);
                     await connection.CloseAsync();
                 }
             }
@@ -122,7 +138,6 @@ namespace snhw.Data
                 return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
                         new System.Text.Json.JsonSerializerOptions() { }, "application/json", 500);
             }
-            
         }
     }
 }

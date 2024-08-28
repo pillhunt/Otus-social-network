@@ -13,7 +13,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		README.md = README.md
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docker", "docker", "{D6C3D7C9-5635-4069-BD97-DC1C6926423B}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "data", "data", "{D6C3D7C9-5635-4069-BD97-DC1C6926423B}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "telegraf", "telegraf", "{242AC5CD-572B-4253-B203-C1F8E2795887}"
 	ProjectSection(SolutionItems) = preProject

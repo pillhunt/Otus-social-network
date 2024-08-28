@@ -1,43 +1,41 @@
-﻿using System.Collections.Concurrent;
-using Microsoft.VisualStudio.Threading;
+﻿using Microsoft.VisualStudio.Threading;
 using snhw.Common;
+using System.Collections.Concurrent;
 
 namespace snhw.Workers
 {
-    internal sealed class RequestManager : BackgroundService
+    public class PostingManager : BackgroundService
     {
         private CancellationToken cancellationToken;
-
-        private readonly SemaphoreSlim taskQueueSemaphore = Queues.RequestTaskQueueSemaphore;
-        private readonly ConcurrentQueue<Task<IResult>> taskQueue = Queues.RequestTaskQueue;
+        private readonly SemaphoreSlim postQueueSemaphore = Queues.PostingTaskQueueSemaphore;
+        private readonly ConcurrentQueue<Task<IResult>> postingTaskQueue = Queues.PostingTaskQueue;
 
         protected override async Task ExecuteAsync(CancellationToken cancellationToken)
         {
             Task<IResult> processedTask;
-
-            this.cancellationToken = cancellationToken;
             AsyncManualResetEvent executorFinishSignal = new AsyncManualResetEvent();
-            var tasksWaitingList = new List<Task<IResult>>();
+            List<Task<IResult>> tasksWaitingList = new List<Task<IResult>>();
+            this.cancellationToken = cancellationToken;
 
-            while (!cancellationToken.IsCancellationRequested || !taskQueue.IsEmpty)
+            while (!cancellationToken.IsCancellationRequested || !postingTaskQueue.IsEmpty) 
             {
                 try
                 {
-                    await taskQueueSemaphore.WaitAsync(cancellationToken);
+                    await postQueueSemaphore.WaitAsync(cancellationToken);
                 }
                 catch (OperationCanceledException)
                 {
-                    if (taskQueue.IsEmpty)
+                    if (postingTaskQueue.IsEmpty)
                         break;
                 }
 
-                if (!taskQueue.TryDequeue(out processedTask))
+                if (!postingTaskQueue.TryDequeue(out processedTask))
                 {
                     continue;
                 }
 
                 tasksWaitingList.Add(processedTask);
-                
+
                 while (tasksWaitingList.Count > 0)
                 {
                     var isFirstTask = true;
@@ -53,19 +51,19 @@ namespace snhw.Workers
                         tasksWaitingList.Remove(taskInWaitingList);
                     }
 
-                    if (taskQueueSemaphore.CurrentCount > 0 || tasksWaitingList.Count == 0)
+                    if (postQueueSemaphore.CurrentCount > 0 || tasksWaitingList.Count == 0)
                         break;
 
                     Task taskQueueWaitingTask;
-                    await Task.WhenAny(taskQueueWaitingTask = taskQueueSemaphore.WaitAsync(), executorFinishSignal.WaitAsync());
-                    
-                    taskQueueSemaphore.Release();
+                    await Task.WhenAny(taskQueueWaitingTask = postQueueSemaphore.WaitAsync(), executorFinishSignal.WaitAsync());
+
+                    postQueueSemaphore.Release();
                     await taskQueueWaitingTask;
-                    
-                    if (taskQueueSemaphore.CurrentCount > 0)
+
+                    if (postQueueSemaphore.CurrentCount > 0)
                         break;
                 }
             }
-        }      
+        }
     }
 }

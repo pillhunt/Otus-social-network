@@ -9,11 +9,8 @@ using NpgsqlTypes;
 
 using snhw.Data;
 using snhw.Common;
-using StackExchange.Redis;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Threading;
+using System.Runtime.InteropServices;
 
 namespace snhw
 {
@@ -457,9 +454,16 @@ namespace snhw
 
         public async Task<IResult> PostCreateAsync(Guid userId, string text)
         {
-            PostingPerson postingPerson = Queues.ReadyForPostingPerson.FirstOrDefault(p => p.UserId == userId)
+            
+            PostingPerson? postingPerson = Queues.ReadyForPostingPerson.FirstOrDefault(p => p.UserId == userId)
                 ?? Queues.PostingPersonsList.FirstOrDefault(p => p.UserId == userId)
-                ?? new PostingPerson(userId);
+                ?? null;
+
+            if (postingPerson == null) 
+            {
+                postingPerson = new PostingPerson(userId);
+                Queues.ReadyForPostingPerson.Add(postingPerson);
+            }
 
             return await postingPerson.PrepareForPublish(text, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
         }
@@ -467,14 +471,14 @@ namespace snhw
         public async Task<IResult> PostGetAsync(Guid userId, Guid postId)
         {
             SemaphoreSlim taskSemaphore = new SemaphoreSlim(0);
-            Task<IResult> userSearcCallTask = Task.Run(async () => await PostGet(userId, postId, taskSemaphore));
-            Queues.RequestTaskQueue.Enqueue(userSearcCallTask);
+            Task<IResult> postGetCallTask = Task.Run(async () => await PostGet(userId, postId, taskSemaphore));
+            Queues.RequestTaskQueue.Enqueue(postGetCallTask);
 
             Queues.RequestTaskQueueSemaphore.Release();
 
             await taskSemaphore.WaitAsync();
 
-            return await userSearcCallTask;
+            return await postGetCallTask;
         }
 
         public async Task<IResult> PostDeleteAsync(Guid userId, Guid postId)
@@ -504,7 +508,7 @@ namespace snhw
                         new("@user_id", userId),
                         new("@post_id", postId),
                         new("@status", -1),
-                        new("@processed", DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
+                        new("@processed", DateTimeOffset.UtcNow),
                     }
                 };
 
@@ -549,11 +553,14 @@ namespace snhw
                     {
                         new("@user_id", userId),
                         new("@post_id", editData.Id),
-                        new("@text", editData.Text),
-                        new("@status", editData.Status),
-                        new("@processed", DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
+                        new("@processed", DateTimeOffset.UtcNow),
                     }
                 };
+
+                if (!string.IsNullOrEmpty(editData.Text))
+                    updateCommand.Parameters.Add(new("@text", editData.Text));
+                if (editData.Status != 0)
+                    updateCommand.Parameters.Add(new("@status", editData.Status));
 
                 await updateCommand.ExecuteNonQueryAsync();
 
@@ -715,24 +722,25 @@ namespace snhw
                 if (!reader.HasRows)
                     return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
 
-                PostGetData? postInfo = null;
+                List<PostGetData> postList = new List<PostGetData>();
 
-                while (reader.Read())
+                while (await reader.ReadAsync())
                 {
-                    postInfo = new PostGetData()
+                    var _postInfo = new PostGetData()
                     {
                         Id = postId,
-                        Created = reader.GetDateTime(1).Millisecond,
-                        Processed = reader.GetDateTime(2).Millisecond,
+                        Created = reader.GetDateTime(1).Millisecond,                        
                         Text = reader.GetString(3),
                         Status = reader.GetInt16(4)
                     };
+
+                    if (!(await reader.IsDBNullAsync(2)))
+                        _postInfo.Processed = reader.GetDateTime(2).Millisecond;
+
+                    postList.Add(_postInfo);
                 }
 
-                if (postInfo == null)
-                    throw new Exception($"Не удалось получить пост {postId} для пользователя {userId}");
-
-                return Results.Json(postInfo, new System.Text.Json.JsonSerializerOptions(), "application/json", 200);
+                return Results.Json(postList, new System.Text.Json.JsonSerializerOptions(), "application/json", 200);
             }
             catch (Exception ex)
             {
@@ -1026,15 +1034,19 @@ namespace snhw
 
                         while (await reader.ReadAsync())
                         {
-                            feedPostData.Add(new FeedPostData()
+                            var _feedPost = new FeedPostData()
                             {
                                 AuthorId = reader.GetGuid(0),
                                 Id = reader.GetGuid(1),
                                 Created = reader.GetDateTime(2).Millisecond,
-                                // Processed = reader.GetDateTime(3).Millisecond,
                                 Text = reader.GetString(4),
                                 Status = 1
-                            });
+                            };
+
+                            if (!(await reader.IsDBNullAsync(3)))
+                                _feedPost.Processed = reader.GetDateTime(3).Millisecond;
+                            
+                            feedPostData.Add(_feedPost);
                         }
 
                         var jsonFeed = JsonSerializer.Serialize(feedPostData);

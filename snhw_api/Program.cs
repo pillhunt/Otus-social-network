@@ -31,7 +31,7 @@ namespace snhw
             });
 
             builder.Services.AddHostedService<RequestManager>();
-            builder.Services.AddHostedService<PostProcessor>();
+            builder.Services.AddHostedService<PostingManager>();
 
             // добавляется Redis
             builder.Services.AddStackExchangeRedisCache(options => options.Configuration = redis_cs);

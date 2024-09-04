@@ -19,6 +19,8 @@ namespace snhw
         private string connectionString = string.Empty;
         private JsonSerializerOptions jsonSerializerOptions = new JsonSerializerOptions();
 
+        private int[] dialogStatusList = { -1, 1, 2, 3, 4, 5, 6 };
+
         public Actions()
         {
             IConfigurationRoot configuration = new ConfigurationBuilder()
@@ -612,6 +614,245 @@ namespace snhw
 
         #endregion
 
+        #region Dialog section
+
+        public async Task<IResult> DialogCreateAsync(DialogData dialogData)
+        {
+            using NpgsqlConnection connection = new(connectionString);
+
+            try
+            {
+                if (await CheckUserForAvailabilityAsync(dialogData.UserId, connection))
+                    throw new Exception("Пользователь не найден");
+
+                if (await CheckUserForAvailabilityAsync(dialogData.ContactId, connection))
+                    throw new Exception("Адресат не найден");
+
+                await connection.OpenAsync();
+                await using NpgsqlTransaction insertTransaction = await connection.BeginTransactionAsync();
+
+                try
+                {
+                    string sqlText = "INSERT INTO sn_user_dialogs " +
+                        " (user_id, contact_id, status_by_user, status_by_user_time, status_by_contact, status_by_contact_time, message_id, message_created, message_text) " +
+                        " VALUES " +
+                        " (@user_id, @contact_id, @status_by_user, @status_by_user_time, @status_by_contact, @status_by_contact_time, @message_id, @message_created, @message_text) " +
+                        " RETURNING message_id";
+
+                    await using var insertCommand = new NpgsqlCommand(sqlText, connection, insertTransaction)
+                    {
+                        Parameters =
+                        {
+                            new("@user_id", dialogData.UserId),
+                            new("@contact_id", dialogData.ContactId),
+                            new("@status_by_user", 1),
+                            new("@status_by_user_time", DateTime.UtcNow),
+                            new("@status_by_contact", 1),
+                            new("@status_by_contact_time", DateTime.UtcNow),
+                            new("@message_id", Guid.NewGuid()),
+                            new("@message_created", DateTime.UtcNow),
+                            new("@message_text", dialogData.MessageText),
+                        }
+                    };
+
+                    object? result = await insertCommand.ExecuteScalarAsync()
+                        ?? throw new Exception("Не удалось получить идентификатор сообщения. Пусто");
+
+                    if (!Guid.TryParse(result.ToString(), out Guid _result))
+                        throw new Exception($"Не удалось получить идентификатор сообщения. Значение: {result}");
+
+                    await insertTransaction.CommitAsync();
+
+                    string authToken = (await OpenSession(_result, connection)).AuthToken;
+
+                    return Results.Json(new AuthResponseData() { UserId = _result, AuthToken = authToken },
+                        jsonSerializerOptions, "application/json", 200);
+                }
+                catch (Exception ex)
+                {
+                    await insertTransaction.RollbackAsync();
+
+                    return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                        jsonSerializerOptions, "application/json", 500);
+                }
+            }
+            catch (Exception ex)
+            {
+                return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                        jsonSerializerOptions, "application/json", 500);
+            }
+            finally
+            {
+                await connection.CloseAsync();
+            }
+        }
+
+        public async Task<IResult> DialogGetAsync(Guid userId, Guid contactId)
+        {
+            SemaphoreSlim taskSemaphore = new SemaphoreSlim(0);
+            Task<IResult> dialogGetCallTask = Task.Run(async () => await DialogGet(userId, contactId, taskSemaphore));
+            Queues.RequestTaskQueue.Enqueue(dialogGetCallTask);
+
+            Queues.RequestTaskQueueSemaphore.Release();
+
+            await taskSemaphore.WaitAsync();
+
+            return await dialogGetCallTask;
+        }
+
+        public async Task<IResult> DialogDeleteAsync(DialogData dialogData)
+        {
+            using NpgsqlConnection connection = new(connectionString);
+
+            try
+            {
+                await connection.OpenAsync();
+
+                bool checkForUserExists = await CheckUserForAvailabilityAsync(dialogData.UserId, connection);
+                if (!checkForUserExists)
+                    return Results.Json("Пользователь не найден", new JsonSerializerOptions(), "application/json", 404);
+
+                string sqlText = "UPDATE sn_user_dialogs " +
+                    " SET status_by_user = @status_by_user, status_by_user_time = @status_by_user_time " +
+                    " WHERE user_id = @user_id AND contact_id = @contact_id";
+
+                await using var updateCommand = new NpgsqlCommand(sqlText, connection)
+                {
+                    Parameters =
+                    {
+                        new("@user_id", dialogData.UserId),
+                        new("@contact_id", dialogData.ContactId),
+                        new("@status_by_user", -1),
+                        new("@status_by_user_time", DateTimeOffset.UtcNow),
+                    }
+                };
+
+                await updateCommand.ExecuteNonQueryAsync();
+
+                return Results.Ok();
+            }
+            catch (Exception ex)
+            {
+                return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                    jsonSerializerOptions, "application/json", 500);
+            }
+            finally
+            {
+                await connection.CloseAsync();
+            }
+        }
+
+        public async Task<IResult> DialogUpdateAsync(DialogDataEdit editData)
+        {
+            using NpgsqlConnection connection = new(connectionString);
+
+            try
+            {
+                await connection.OpenAsync();
+
+                bool checkForUserExists = await CheckUserForAvailabilityAsync(editData.UserId, connection);
+                if (!checkForUserExists)
+                    return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
+
+                string sqlText = "UPDATE sn_user_dialogs SET id = id ";
+
+                DialogDataGet message = new DialogDataGet();
+                bool readyForEditText = false;
+
+                if (!string.IsNullOrEmpty(editData.MessageText))
+                {
+                    IResult dialog = await DialogGetAsync(editData.UserId, editData.ContactId);
+                    var mockHttpContext = new DefaultHttpContext
+                    {
+                        // RequestServices needs to be set so the IResult implementation can log.
+                        RequestServices = new ServiceCollection().AddLogging().BuildServiceProvider(),
+                        Response =
+                        {
+                            // The default response body is Stream.Null which throws away anything that is written to it.
+                            Body = new MemoryStream(),
+                        },
+                    };
+                    dialog.ExecuteAsync(mockHttpContext);
+                    mockHttpContext.Response.Body.Position = 0;
+                    var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+
+                    message = ((List<DialogDataGet>)JsonSerializer.Deserialize(mockHttpContext.Response.Body, typeof(List<DialogDataGet>), jsonOptions))
+                            .FirstOrDefault(d => d.MessageId == editData.MessageId) ??
+                            throw new Exception("Нет такого сообщения");
+
+                    if (message.MessageText != editData.MessageText)
+                    {
+                        sqlText += ", message_processed=@message_processed, message_text=@message_text ";
+                        readyForEditText = true;
+                    }
+                }
+
+                if (dialogStatusList.Contains(editData.StatusByUser))
+                {
+                    sqlText += ", status_by_user=@status_by_user, status_by_user_time=@status_by_user_time";
+                }
+
+                if (dialogStatusList.Contains(editData.StatusByContact))
+                {
+                    sqlText += ", status_by_contact=@status_by_contact, status_by_contact_time=@status_by_contact_time";
+                }
+
+                if (editData.MessageParentId != null)
+                {
+                    sqlText += ", message_parent_id=@message_parent_id";
+                }
+                
+                sqlText += " WHERE user_id = @user_id AND contact_id = @contact_id AND message_id = @message_id";
+
+                await using var updateCommand = new NpgsqlCommand(sqlText, connection)
+                {
+                    Parameters =
+                    {
+                        new("@user_id", editData.UserId),
+                        new("@contact_id", editData.ContactId),
+                        new("@message_id", editData.MessageId),
+                    }
+                };
+
+                if (editData.MessageParentId != null)
+                    updateCommand.Parameters.Add(new("@message_parent_id", editData.MessageParentId));
+
+                if (readyForEditText)
+                {
+                    updateCommand.Parameters.Add(new("@message_text", editData.MessageText));
+                    updateCommand.Parameters.Add(new("@message_processed", DateTime.UtcNow ));
+                }
+
+                if (dialogStatusList.Contains(editData.StatusByUser))
+                {
+                    updateCommand.Parameters.Add(new("@status_by_user", editData.StatusByUser));
+                    updateCommand.Parameters.Add(new("@status_by_user_time", DateTime.UtcNow));
+                }
+
+                if (dialogStatusList.Contains(editData.StatusByContact))
+                {
+                    updateCommand.Parameters.Add(new("@status_by_contact", editData.StatusByContact));
+                    updateCommand.Parameters.Add(new("@status_by_contact_time", DateTime.UtcNow));
+                }
+
+                await updateCommand.ExecuteNonQueryAsync();
+
+                return Results.Ok();
+            }
+            catch (Exception ex)
+            {
+                return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                    jsonSerializerOptions, "application/json", 500);
+            }
+            finally
+            {
+                await connection.CloseAsync();
+            }
+        }
+
+
+        #endregion
+
         #region Private section
 
         private async Task<IResult> UserSearch(UserBaseData userData, SemaphoreSlim semaphoreSlim)
@@ -729,13 +970,13 @@ namespace snhw
                     var _postInfo = new PostGetData()
                     {
                         Id = postId,
-                        Created = reader.GetDateTime(1).Millisecond,                        
+                        Created = reader.GetDateTime(1).Second,                        
                         Text = reader.GetString(3),
                         Status = reader.GetInt16(4)
                     };
 
                     if (!(await reader.IsDBNullAsync(2)))
-                        _postInfo.Processed = reader.GetDateTime(2).Millisecond;
+                        _postInfo.Processed = reader.GetDateTime(2).Second;
 
                     postList.Add(_postInfo);
                 }
@@ -798,6 +1039,68 @@ namespace snhw
                 }
 
                 return Results.Json(userInfo, new System.Text.Json.JsonSerializerOptions(), "application/json", 200);
+            }
+            catch (Exception ex)
+            {
+                return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                    jsonSerializerOptions, "application/json", 500);
+            }
+            finally
+            {
+                connection.Close();
+                semaphoreSlim.Release();
+            }
+        }
+
+        private async Task<IResult> DialogGet(Guid userId, Guid contactId, SemaphoreSlim semaphoreSlim)
+        {
+            using NpgsqlConnection connection = new(connectionString);
+
+            try
+            {
+                connection.Open();
+
+                string sqlText = "SELECT " +
+                    " user_id, contact_id, status_by_user, status_by_user_time," +
+                    " status_by_contact, status_by_contact_time, message_id," +
+                    " message_parent_id, message_created, message_processed, message_text" +
+                    " FROM sn_user_dialogs WHERE user_id = @user_id and contact_id = @contact_id";
+
+                await using var selectCommand = new NpgsqlCommand(sqlText, connection)
+                {
+                    Parameters =
+                    {
+                        new("@user_id", userId),
+                        new("@contact_id", contactId)
+                    }
+                };
+
+                using NpgsqlDataReader reader = await selectCommand.ExecuteReaderAsync();
+
+                if (!reader.HasRows)
+                    return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
+
+                var dialogInfo = new List<DialogDataGet>();
+
+                while (reader.Read())
+                {
+                    dialogInfo.Add(new DialogDataGet()
+                    {
+                        UserId = reader.GetGuid(0),
+                        ContactId = reader.GetGuid(1),
+                        StatusByUser = reader.GetInt16(2),
+                        StatusByUserTime = reader.GetDateTime(3).Second,
+                        StatusByContact = reader.GetInt16(4),
+                        StatusByContactTime = reader.GetDateTime(5).Second,
+                        MessageId = reader.GetGuid(6),
+                        MessageParentId = !reader.IsDBNull(7) ? reader.GetGuid(7) : null,
+                        MessageCreated = reader.GetDateTime(8).Second,
+                        MessageProcessed = !reader.IsDBNull(9) ? reader.GetDateTime(9).Second : null,
+                        MessageText = reader.GetString(10)
+                    });
+                }
+
+                return Results.Json(dialogInfo, new System.Text.Json.JsonSerializerOptions(), "application/json", 200);
             }
             catch (Exception ex)
             {

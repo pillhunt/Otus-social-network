@@ -155,5 +155,42 @@ namespace snhw
             return group;
         }
 
+        public static RouteGroupBuilder DialogGroup(this RouteGroupBuilder group)
+        {
+            string commonName = "Dialog";
+
+            group.MapPost("/dialog", async ([FromBody] DialogData dialogData) => await actions.DialogCreateAsync(dialogData))
+            .WithName($"{commonName}Create")
+            .Produces(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
+            .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
+            ;
+
+            group.MapGet("/dialog", async (Guid userId, Guid contactId) => await actions.DialogGetAsync(userId, contactId))
+            .WithName($"{commonName}Get")
+            .Produces(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
+            .Produces(StatusCodes.Status404NotFound, typeof(InfoData))
+            .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
+            ;
+
+            group.MapDelete("/dialog", async ([FromBody] DialogData dialogData) => await actions.DialogDeleteAsync(dialogData))
+            .WithName($"{commonName}Delete")
+            .Produces(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
+            .Produces(StatusCodes.Status404NotFound, typeof(InfoData))
+            .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
+            ;
+
+            group.MapPut("/dialog", async ([FromBody] DialogDataEdit editData) => await actions.DialogUpdateAsync(editData))
+            .WithName($"{commonName}Update")
+            .Produces(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
+            .Produces(StatusCodes.Status404NotFound, typeof(InfoData))
+            .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
+            ;
+
+            return group;
+        }
     }
 }

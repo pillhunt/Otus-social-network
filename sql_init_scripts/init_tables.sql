@@ -115,3 +115,29 @@ TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS public.sn_user_contacts
     OWNER to snhwdb;
+
+-- Table: public.ns_user_dialogs
+
+-- DROP TABLE IF EXISTS public.sn_user_dialogs;
+
+CREATE TABLE IF NOT EXISTS public.sn_user_dialogs
+(
+    id bigint NOT NULL DEFAULT nextval('ns_user_dialogs_id_seq'::regclass),
+    user_id uuid NOT NULL,
+    contact_id uuid NOT NULL,
+    status_by_user smallint NOT NULL,
+    status_by_user_time timestamp with time zone NOT NULL,
+    status_by_contact smallint NOT NULL,
+    status_by_contact_time timestamp with time zone NOT NULL,
+    message_id uuid NOT NULL,
+    message_parent_id uuid,
+    message_created timestamp with time zone NOT NULL,
+    message_processed timestamp with time zone,
+    message_text text COLLATE pg_catalog."default",
+    CONSTRAINT ns_user_dialogs_pkey PRIMARY KEY (user_id)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.sn_user_dialogs
+    OWNER to snhwdb;

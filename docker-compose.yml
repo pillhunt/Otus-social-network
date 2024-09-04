@@ -215,35 +215,6 @@
   #     - snhw_grafanadata:/var/lib/grafana:rw
   #   networks:
   #     - snhw_network
-  master:
-    container_name: "citus_master"
-    image: "citusdata/citus:12.1.5"
-    ports: 
-      - "5433:5432"
-    environment:
-      POSTGRES_USER: "snhwdb"
-      POSTGRES_PASSWORD: "pass"
-      PGUSER: "snhwdb"
-      PGPASSWORD: "pass"
-    networks:
-      - snhw_network
-  worker:
-    image: "citusdata/citus:12.1.5"
-    depends_on:
-      - manager
-    volumes:
-      - healthcheck-volume:/healthcheck
-    networks:
-      - snhw_network
-  manager:
-    container_name: "citus_manager"
-    image: "citusdata/membership-manager:0.3.0"
-    volumes:
-      - healthcheck-volume:/healthcheck
-    depends_on: 
-      - master
-    networks:
-      - snhw_network
 volumes:
   snhw_nginx:
     name: snhw_nginx
@@ -264,7 +235,6 @@ volumes:
     name: snhw_grafanadata
   snhw_influxdbdata:
     name: snhw_influxdbdata
-  healthcheck-volume:
 networks:
   snhw_network:
     name: snhw_network

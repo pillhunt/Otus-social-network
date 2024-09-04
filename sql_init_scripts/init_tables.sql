@@ -16,6 +16,27 @@ CREATE SEQUENCE IF NOT EXISTS public.sn_user_sessions_id_seq
     MAXVALUE 9223372036854775807
     CACHE 1;
 
+CREATE SEQUENCE IF NOT EXISTS public.sn_user_posts_id_seq
+    INCREMENT 1
+    START 1
+    MINVALUE 1
+    MAXVALUE 9223372036854775807
+    CACHE 1;
+
+CREATE SEQUENCE IF NOT EXISTS public.sn_user_sessions_id_seq
+    INCREMENT 1
+    START 1
+    MINVALUE 1
+    MAXVALUE 9223372036854775807
+    CACHE 1;
+
+CREATE SEQUENCE IF NOT EXISTS public.ns_user_dialogs_id_seq
+    INCREMENT 1
+    START 1
+    MINVALUE 1
+    MAXVALUE 9223372036854775807
+    CACHE 1;
+
 CREATE TABLE IF NOT EXISTS public.sn_user_info
 (
     id bigint NOT NULL DEFAULT nextval('sn_user_info_id_seq'::regclass),
@@ -135,9 +156,7 @@ CREATE TABLE IF NOT EXISTS public.sn_user_dialogs
     message_processed timestamp with time zone,
     message_text text COLLATE pg_catalog."default",
     CONSTRAINT ns_user_dialogs_pkey PRIMARY KEY (user_id)
-)
-
-TABLESPACE pg_default;
+) PARTITION BY LIST (user_id);
 
 ALTER TABLE IF EXISTS public.sn_user_dialogs
     OWNER to snhwdb;

@@ -11,6 +11,8 @@ using snhw.Data;
 using snhw.Common;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using Microsoft.AspNetCore.Http.HttpResults;
+using System.Collections.Generic;
 
 namespace snhw
 {
@@ -104,9 +106,7 @@ namespace snhw
             {
                 connection.Open();
 
-                bool checkForUserExists = await CheckUserForAvailabilityAsync(userId, connection);
-
-                if (!checkForUserExists)
+                if (!await CheckUserForAvailabilityAsync(userId, connection))
                     return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
 
                 string sqlText = "DELETE FROM sn_user_info WHERE user_id = @user_id";
@@ -141,9 +141,8 @@ namespace snhw
             try
             {
                 connection.Open();
-                bool checkForUserExists = await CheckUserForAvailabilityAsync(userId, connection);
 
-                if (!checkForUserExists)
+                if (!await CheckUserForAvailabilityAsync(userId, connection))
                     return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
 
                 string sqlText = "UPDATE public.sn_user_info SET " +
@@ -379,12 +378,10 @@ namespace snhw
             {
                 await connection.OpenAsync();
 
-                bool checkForUserExists = await CheckUserForAvailabilityAsync(userId, connection);
-                if (!checkForUserExists)
+                if (!await CheckUserForAvailabilityAsync(userId, connection))
                     return Results.Json("Пользователь не найден", jsonSerializerOptions, "application/json", 404);
 
-                checkForUserExists = await CheckUserForAvailabilityAsync(contactData.Id, connection);
-                if (!checkForUserExists)
+                if (!await CheckUserForAvailabilityAsync(contactData.Id, connection))
                     return Results.Json("Пользователь не найден", jsonSerializerOptions, "application/json", 404);
 
                 string comment = !string.IsNullOrEmpty(contactData.Comment)
@@ -491,12 +488,10 @@ namespace snhw
             {
                 await connection.OpenAsync();
 
-                bool checkForUserExists = await CheckUserForAvailabilityAsync(userId, connection);
-                if (!checkForUserExists)
+                if (!await CheckUserForAvailabilityAsync(userId, connection))
                     return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
 
-                bool checkForPostExists = await CheckPostForAvailabilityAsync(postId, connection);
-                if (!checkForPostExists)
+                if (!await CheckPostForAvailabilityAsync(postId, connection))
                     return Results.Json("Публикация не найдена", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
 
                 string sqlText = "UPDATE sn_user_posts " +
@@ -537,12 +532,10 @@ namespace snhw
             {
                 await connection.OpenAsync();
 
-                bool checkForUserExists = await CheckUserForAvailabilityAsync(userId, connection);
-                if (!checkForUserExists)
+                if (!await CheckUserForAvailabilityAsync(userId, connection))
                     return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
 
-                bool checkForPostExists = await CheckPostForAvailabilityAsync(editData.Id, connection);
-                if (!checkForPostExists)
+                if (!await CheckPostForAvailabilityAsync(editData.Id, connection))
                     return Results.Json("Публикация не найдена", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
 
                 string sqlText = "UPDATE sn_user_posts " +
@@ -589,9 +582,7 @@ namespace snhw
             {
                 await connection.OpenAsync();
 
-                bool checkForUserExists = await CheckUserForAvailabilityAsync(userId, connection);
-
-                if (!checkForUserExists)
+                if (!await CheckUserForAvailabilityAsync(userId, connection))
                     return Results.Json("Пользователь не найден", jsonSerializerOptions, "application/json", 404);
 
                 string? feed = await cache.GetStringAsync($"feed-user-{userId}");
@@ -622,18 +613,74 @@ namespace snhw
 
             try
             {
-                if (await CheckUserForAvailabilityAsync(dialogData.UserId, connection))
+                await connection.OpenAsync();
+
+                if (!await CheckUserForAvailabilityAsync(dialogData.UserId, connection))
                     throw new Exception("Пользователь не найден");
 
-                if (await CheckUserForAvailabilityAsync(dialogData.ContactId, connection))
+                if (!await CheckUserForAvailabilityAsync(dialogData.ContactId, connection))
                     throw new Exception("Адресат не найден");
+
+                string sqlText = string.Empty;
+                bool partitionTableExists = false;
+                string partitionTableName = $"sn_user_dialogs_user_{dialogData.UserId.ToString().Replace('-','_')}";
+
+                try
+                {
+                    sqlText = $"SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_schema = 'public' " +
+                        $"AND table_name = '{partitionTableName}');";
+
+                    await using var checkCommand = new NpgsqlCommand(sqlText, connection);
+                    {
+                        using NpgsqlDataReader checkReader = await checkCommand.ExecuteReaderAsync();
+                        {
+                            if (checkReader.HasRows)
+                            {
+                                while (checkReader.Read())
+                                {
+                                    partitionTableExists = checkReader.GetBoolean(0);
+                                }
+                            }                            
+                        }
+                    }
+                }
+                catch(Exception ex)
+                {
+                    return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                        jsonSerializerOptions, "application/json", 500);
+                }
+                finally 
+                { 
+                    await connection.CloseAsync(); 
+                }                
+
+                if (!partitionTableExists)
+                {
+                    await connection.OpenAsync();
+
+                    try
+                    {
+                        sqlText = $"CREATE TABLE {partitionTableName} PARTITION OF sn_user_dialogs FOR VALUES IN('{dialogData.UserId}')";
+                        await using var createCommand = new NpgsqlCommand(sqlText, connection);
+                        await createCommand.ExecuteNonQueryAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                        jsonSerializerOptions, "application/json", 500);
+                    }
+                    finally
+                    {
+                        await connection.CloseAsync();
+                    }
+                }
 
                 await connection.OpenAsync();
                 await using NpgsqlTransaction insertTransaction = await connection.BeginTransactionAsync();
 
                 try
                 {
-                    string sqlText = "INSERT INTO sn_user_dialogs " +
+                    sqlText = "INSERT INTO sn_user_dialogs " +
                         " (user_id, contact_id, status_by_user, status_by_user_time, status_by_contact, status_by_contact_time, message_id, message_created, message_text) " +
                         " VALUES " +
                         " (@user_id, @contact_id, @status_by_user, @status_by_user_time, @status_by_contact, @status_by_contact_time, @message_id, @message_created, @message_text) " +
@@ -708,8 +755,7 @@ namespace snhw
             {
                 await connection.OpenAsync();
 
-                bool checkForUserExists = await CheckUserForAvailabilityAsync(dialogData.UserId, connection);
-                if (!checkForUserExists)
+                if (!await CheckUserForAvailabilityAsync(dialogData.UserId, connection))
                     return Results.Json("Пользователь не найден", new JsonSerializerOptions(), "application/json", 404);
 
                 string sqlText = "UPDATE sn_user_dialogs " +
@@ -750,8 +796,7 @@ namespace snhw
             {
                 await connection.OpenAsync();
 
-                bool checkForUserExists = await CheckUserForAvailabilityAsync(editData.UserId, connection);
-                if (!checkForUserExists)
+                if (!await CheckUserForAvailabilityAsync(editData.UserId, connection))
                     return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
 
                 string sqlText = "UPDATE sn_user_dialogs SET id = id ";
@@ -1238,10 +1283,7 @@ namespace snhw
 
                 using (NpgsqlDataReader reader = await selectCommand.ExecuteReaderAsync())
                 {
-                    if (!reader.HasRows)
-                        return false;
-                    else
-                        return true;
+                    return reader.HasRows;
                 }
             }
             catch (Exception ex)
@@ -1266,10 +1308,7 @@ namespace snhw
 
                 using (NpgsqlDataReader reader = await selectCommand.ExecuteReaderAsync())
                 {
-                    if (!reader.HasRows)
-                        return false;
-                    else
-                        return true;
+                    return reader.HasRows;
                 }
             }
             catch (Exception ex)
@@ -1309,16 +1348,15 @@ namespace snhw
                     {
                         await connection.OpenAsync();
 
-                        bool checkForUserExists = await CheckUserForAvailabilityAsync(userId, connection);
-                        if (!checkForUserExists)
+                        if (!await CheckUserForAvailabilityAsync(userId, connection))
                             return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
 
                         string sqlText = $"select * from (SELECT user_id, post_id, created, processed, text, row_number() " +
-                        $"OVER(PARTITION BY user_id ORDER BY processed DESC) rn " +
-                        $"FROM sn_user_posts s " +
-                        $"WHERE user_id<> @user_id AND status = 1 " +
-                        $"AND user_id IN (SELECT contact_user_id FROM sn_user_contacts WHERE user_id = @user_id) ) " +
-                        $"WHERE rn <= 3 ORDER BY processed DESC LIMIT 1000";
+                            $"OVER(PARTITION BY user_id ORDER BY processed DESC) rn " +
+                            $"FROM sn_user_posts s " +
+                            $"WHERE user_id<> @user_id AND status = 1 " +
+                            $"AND user_id IN (SELECT contact_user_id FROM sn_user_contacts WHERE user_id = @user_id) ) " +
+                            $"WHERE rn <= 3 ORDER BY processed DESC LIMIT 1000";
 
                         await using var selectCommand = new NpgsqlCommand(sqlText, connection)
                         {

@@ -9,10 +9,6 @@ using NpgsqlTypes;
 
 using snhw.Data;
 using snhw.Common;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
-using Microsoft.AspNetCore.Http.HttpResults;
-using System.Collections.Generic;
 
 namespace snhw
 {
@@ -680,7 +676,7 @@ namespace snhw
 
                 try
                 {
-                    sqlText = "INSERT INTO sn_user_dialogs " +
+                    sqlText = $"INSERT INTO {partitionTableName} " +
                         " (user_id, contact_id, status_by_user, status_by_user_time, status_by_contact, status_by_contact_time, message_id, message_created, message_text) " +
                         " VALUES " +
                         " (@user_id, @contact_id, @status_by_user, @status_by_user_time, @status_by_contact, @status_by_contact_time, @message_id, @message_created, @message_text) " +

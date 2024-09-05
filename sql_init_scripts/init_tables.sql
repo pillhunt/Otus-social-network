@@ -154,8 +154,7 @@ CREATE TABLE IF NOT EXISTS public.sn_user_dialogs
     message_parent_id uuid,
     message_created timestamp with time zone NOT NULL,
     message_processed timestamp with time zone,
-    message_text text COLLATE pg_catalog."default",
-    CONSTRAINT ns_user_dialogs_pkey PRIMARY KEY (user_id)
+    message_text text COLLATE pg_catalog."default"
 ) PARTITION BY LIST (user_id);
 
 ALTER TABLE IF EXISTS public.sn_user_dialogs

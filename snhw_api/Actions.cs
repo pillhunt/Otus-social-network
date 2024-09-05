@@ -706,10 +706,7 @@ namespace snhw
 
                     await insertTransaction.CommitAsync();
 
-                    string authToken = (await OpenSession(_result, connection)).AuthToken;
-
-                    return Results.Json(new AuthResponseData() { UserId = _result, AuthToken = authToken },
-                        jsonSerializerOptions, "application/json", 200);
+                    return Results.Json(new { MessageId = _result }, jsonSerializerOptions, "application/json", 200);
                 }
                 catch (Exception ex)
                 {

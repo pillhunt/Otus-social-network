@@ -159,7 +159,7 @@ namespace snhw
         {
             string commonName = "Dialog";
 
-            group.MapPost("/dialog", async ([FromBody] DialogData dialogData) => await actions.DialogCreateAsync(dialogData))
+            group.MapPost("/dialog", async ([FromBody] DialogDataEdit dialogData) => await actions.DialogCreateAsync(dialogData))
             .WithName($"{commonName}Create")
             .Produces(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))

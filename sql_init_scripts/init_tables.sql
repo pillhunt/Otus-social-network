@@ -30,12 +30,6 @@ CREATE SEQUENCE IF NOT EXISTS public.sn_user_sessions_id_seq
     MAXVALUE 9223372036854775807
     CACHE 1;
 
-CREATE SEQUENCE IF NOT EXISTS public.ns_user_dialogs_id_seq
-    INCREMENT 1
-    START 1
-    MINVALUE 1
-    MAXVALUE 9223372036854775807
-    CACHE 1;
 
 CREATE TABLE IF NOT EXISTS public.sn_user_info
 (
@@ -137,25 +131,49 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS public.sn_user_contacts
     OWNER to snhwdb;
 
--- Table: public.ns_user_dialogs
-
--- DROP TABLE IF EXISTS public.sn_user_dialogs;
+CREATE SEQUENCE IF NOT EXISTS public.sn_user_dialogs_id_seq
+    INCREMENT 1
+    START 1
+    MINVALUE 1
+    MAXVALUE 9223372036854775807
+    CACHE 1;
 
 CREATE TABLE IF NOT EXISTS public.sn_user_dialogs
 (
-    id bigint NOT NULL DEFAULT nextval('ns_user_dialogs_id_seq'::regclass),
+    id bigint NOT NULL DEFAULT nextval('sn_user_dialogs_id_seq'::regclass),
     user_id uuid NOT NULL,
-    contact_id uuid NOT NULL,
-    status_by_user smallint NOT NULL,
-    status_by_user_time timestamp with time zone NOT NULL,
-    status_by_contact smallint NOT NULL,
-    status_by_contact_time timestamp with time zone NOT NULL,
+    c uuid NOT NULL,
+    dialog_name text NOT NULL,
+    dialog_status smallint NOT NULL,
+    dialog_status_time timestamp with time zone NOT NULL,
+    message_id uuid NOT NULL,
+    message_status smallint NOT NULL,
+    message_status_time timestamp with time zone NOT NULL
+) PARTITION BY LIST (user_id);
+
+ALTER TABLE IF EXISTS public.sn_user_dialogs
+    OWNER to snhwdb;
+    
+CREATE SEQUENCE IF NOT EXISTS public.sn_user_dialog_messages_seq
+    INCREMENT 1
+    START 1
+    MINVALUE 1
+    MAXVALUE 9223372036854775807
+    CACHE 1;
+
+CREATE TABLE IF NOT EXISTS public.sn_user_dialog_messages
+(
+    id bigint NOT NULL DEFAULT nextval('sn_user_dialog_messages_seq'::regclass),
+    dialog_id uuid NOT NULL,
     message_id uuid NOT NULL,
     message_parent_id uuid,
     message_created timestamp with time zone NOT NULL,
     message_processed timestamp with time zone,
-    message_text text COLLATE pg_catalog."default"
+    message_text text COLLATE pg_catalog."default",
+    message_author_id uuid NOT NULL,
+    message_status_by_author smallint NOT NULL,    
+    message_status_by_author_time timestamp with time zone NOT NULL
 ) PARTITION BY LIST (user_id);
 
-ALTER TABLE IF EXISTS public.sn_user_dialogs
+ALTER TABLE IF EXISTS public.sn_user_dialog_messages
     OWNER to snhwdb;

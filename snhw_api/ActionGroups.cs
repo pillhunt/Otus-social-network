@@ -159,14 +159,14 @@ namespace snhw
         {
             string commonName = "Dialog";
 
-            group.MapPost("/dialog", async ([FromBody] DialogDataEdit dialogData) => await actions.DialogCreateAsync(dialogData))
+            group.MapPost("/dialog", async ([FromBody] DialogDataSet dialogData) => await actions.DialogCreateAsync(dialogData))
             .WithName($"{commonName}Create")
             .Produces(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            group.MapGet("/dialog", async (Guid userId, Guid contactId) => await actions.DialogGetAsync(userId, contactId))
+            group.MapGet("/dialog", async (Guid userId, Guid dialogId) => await actions.DialogGetAsync(userId, dialogId))
             .WithName($"{commonName}Get")
             .Produces(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
@@ -182,7 +182,7 @@ namespace snhw
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            group.MapPut("/dialog", async ([FromBody] DialogDataEdit editData) => await actions.DialogUpdateAsync(editData))
+            group.MapPut("/dialog", async ([FromBody] DialogDataSet editData) => await actions.DialogUpdateAsync(editData))
             .WithName($"{commonName}Update")
             .Produces(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))

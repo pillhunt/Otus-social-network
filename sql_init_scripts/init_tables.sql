@@ -142,7 +142,7 @@ CREATE TABLE IF NOT EXISTS public.sn_user_dialogs
 (
     id bigint NOT NULL DEFAULT nextval('sn_user_dialogs_id_seq'::regclass),
     user_id uuid NOT NULL,
-    c uuid NOT NULL,
+    dialog_id uuid NOT NULL,
     dialog_name text NOT NULL,
     dialog_status smallint NOT NULL,
     dialog_status_time timestamp with time zone NOT NULL,
@@ -170,10 +170,9 @@ CREATE TABLE IF NOT EXISTS public.sn_user_dialog_messages
     message_created timestamp with time zone NOT NULL,
     message_processed timestamp with time zone,
     message_text text COLLATE pg_catalog."default",
-    message_author_id uuid NOT NULL,
-    message_status_by_author smallint NOT NULL,    
-    message_status_by_author_time timestamp with time zone NOT NULL
-) PARTITION BY LIST (user_id);
+    message_author_id uuid NOT NULL
+) PARTITION BY LIST (dialog_id);
 
 ALTER TABLE IF EXISTS public.sn_user_dialog_messages
     OWNER to snhwdb;
+

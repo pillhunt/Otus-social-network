@@ -2,25 +2,40 @@
 {
     public class DialogData
     {
-        public Guid? DialogId { get; set; }
-        public string DialogName { get; set; } = string.Empty;
         public Guid UserId { get; set; }
-        public Guid ContactId { get; set; }
-        public string MessageText { get; set; } = string.Empty;
+        public Guid? DialogId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public int Status { get; set; }
+        public long StatusTime { get; set; }
     }
 
-    public class DialogDataEdit : DialogData
+    public class DialogDataGet : DialogData
     {
-        public Guid? MessageId { get; set; }
-        public Guid? MessageParentId { get; set; }
-        public int StatusByUser { get; set; }
+        public List<DialogContactData> Contacts { get; set; } = new List<DialogContactData>();
+        public List<DialogMessageData> Messages { get; set; } = new List<DialogMessageData>();
     }
 
-    public class DialogDataGet : DialogDataEdit 
-    { 
-        public long StatusByUserTime { get; set; }
-        public long StatusByContactTime { get; set; }
-        public long MessageCreated { get; set; }
-        public long? MessageProcessed { get ; set; }
+    public class DialogDataSet : DialogData
+    {
+        public DialogMessageData Message { get; set; } = new DialogMessageData();
+        public DialogContactData Contact { get; set; } = new DialogContactData();
+    }
+
+    public class DialogContactData
+    {
+        public Guid UserId { get; set; }
+        public List<DialogMessageData> Messages { get; set; } = new List<DialogMessageData>();
+    }
+
+    public class DialogMessageData
+    {
+        public Guid? Id { get; set; }
+        public Guid? ParentId { get; set; }
+        public Guid AuthorId { get; set; }
+        public int Status { get; set; }
+        public long StatusTime { get; set; }
+        public long Created { get; set; }
+        public long? Processed { get; set; }
+        public string Text { get; set; } = string.Empty;
     }
 }

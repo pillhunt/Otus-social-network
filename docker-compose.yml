@@ -60,6 +60,8 @@
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    # command: >
+    #   sh -c 'docker-compose -p citus up'
     volumes:
       - snhw_pgdata:/var/lib/postgresql/data
       # - ./docker/pg_master/postgresql_master.conf://var/lib/postgresql/data/postgresql.conf:rw

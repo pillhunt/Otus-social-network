@@ -56,6 +56,7 @@ namespace snhw
 
             app.MapGroup(version).UserGroup().WithTags("User");
             app.MapGroup(version).ContactGroup().WithTags("Contact");
+            app.MapGroup(version).DialogGroup().WithTags("Dialog");
             app.MapGroup(version).PostGroup().WithTags("Post");
 
             app.Run();

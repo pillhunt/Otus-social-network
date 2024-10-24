@@ -9,8 +9,8 @@ using NpgsqlTypes;
 
 using snhw.Data;
 using snhw.Common;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
+using System.Reflection.Metadata.Ecma335;
+using System.Xml;
 
 namespace snhw
 {
@@ -18,6 +18,10 @@ namespace snhw
     {
         private string connectionString = string.Empty;
         private JsonSerializerOptions jsonSerializerOptions = new JsonSerializerOptions();
+
+        private int[] dialogStatusList = { -1, 1, 2, 3, 4, 5, 6 };
+
+        private int[] messageStatusList = { -1, 1, 2, 3, 4, 5, 6 };
 
         public Actions()
         {
@@ -100,13 +104,11 @@ namespace snhw
 
             try
             {
-                connection.Open();
-
-                bool checkForUserExists = await CheckUserForAvailabilityAsync(userId, connection);
-
-                if (!checkForUserExists)
+                if (!await CheckUserForAvailabilityAsync(userId, connection))
                     return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
 
+                await connection.OpenAsync();
+                
                 string sqlText = "DELETE FROM sn_user_info WHERE user_id = @user_id";
 
                 await using var deleteCommand = new NpgsqlCommand(sqlText, connection)
@@ -128,7 +130,7 @@ namespace snhw
             }
             finally
             {
-                connection.Close();
+                await connection.CloseAsync();
             }
         }
 
@@ -138,12 +140,11 @@ namespace snhw
 
             try
             {
-                connection.Open();
-                bool checkForUserExists = await CheckUserForAvailabilityAsync(userId, connection);
-
-                if (!checkForUserExists)
+                if (!await CheckUserForAvailabilityAsync(userId, connection))
                     return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
 
+                await connection.OpenAsync();
+                
                 string sqlText = "UPDATE public.sn_user_info SET " +
                     " user_name=@user_name, user_sname=@user_sname, user_patronimic=@user_patronimic, " +
                     " user_birthday=@user_birthday, user_city=@user_city, user_email=@user_email, user_gender=@user_gender, " +
@@ -177,7 +178,7 @@ namespace snhw
             }
             finally
             {
-                connection.Close();
+                await connection.CloseAsync();
             }
         }
 
@@ -256,7 +257,10 @@ namespace snhw
 
             try
             {
-                connection.Open();
+                if (!await CheckUserForAvailabilityAsync(authData.UserId, connection))
+                    return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
+
+                await connection.OpenAsync();
 
                 string sqlText = "UPDATE public.sn_user_sessions " +
                     " SET user_session_status = false " +
@@ -282,7 +286,7 @@ namespace snhw
             }
             finally
             {
-                connection.Close();
+                await connection.OpenAsync();
             }
         }
 
@@ -375,15 +379,13 @@ namespace snhw
 
             try
             {
+                if (!await CheckUserForAvailabilityAsync(userId, connection))
+                    return Results.Json("Пользователь не найден", jsonSerializerOptions, "application/json", 404);
+
+                if (!await CheckUserForAvailabilityAsync(contactData.Id, connection))
+                    return Results.Json("Пользователь не найден", jsonSerializerOptions, "application/json", 404);
+
                 await connection.OpenAsync();
-
-                bool checkForUserExists = await CheckUserForAvailabilityAsync(userId, connection);
-                if (!checkForUserExists)
-                    return Results.Json("Пользователь не найден", jsonSerializerOptions, "application/json", 404);
-
-                checkForUserExists = await CheckUserForAvailabilityAsync(contactData.Id, connection);
-                if (!checkForUserExists)
-                    return Results.Json("Пользователь не найден", jsonSerializerOptions, "application/json", 404);
 
                 string comment = !string.IsNullOrEmpty(contactData.Comment)
                     ? "@comment"
@@ -487,15 +489,13 @@ namespace snhw
 
             try
             {
-                await connection.OpenAsync();
-
-                bool checkForUserExists = await CheckUserForAvailabilityAsync(userId, connection);
-                if (!checkForUserExists)
+                if (!await CheckUserForAvailabilityAsync(userId, connection))
                     return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
 
-                bool checkForPostExists = await CheckPostForAvailabilityAsync(postId, connection);
-                if (!checkForPostExists)
+                if (!await CheckPostForAvailabilityAsync(postId, connection))
                     return Results.Json("Публикация не найдена", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
+
+                await connection.OpenAsync();
 
                 string sqlText = "UPDATE sn_user_posts " +
                     " SET status = @status, processed = @processed " +
@@ -533,15 +533,14 @@ namespace snhw
 
             try
             {
-                await connection.OpenAsync();
 
-                bool checkForUserExists = await CheckUserForAvailabilityAsync(userId, connection);
-                if (!checkForUserExists)
+                if (!await CheckUserForAvailabilityAsync(userId, connection))
                     return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
 
-                bool checkForPostExists = await CheckPostForAvailabilityAsync(editData.Id, connection);
-                if (!checkForPostExists)
+                if (!await CheckPostForAvailabilityAsync(editData.Id, connection))
                     return Results.Json("Публикация не найдена", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
+
+                await connection.OpenAsync();
 
                 string sqlText = "UPDATE sn_user_posts " +
                     " SET status = @status, processed = @processed, text = @text " +
@@ -585,12 +584,10 @@ namespace snhw
 
             try
             {
-                await connection.OpenAsync();
-
-                bool checkForUserExists = await CheckUserForAvailabilityAsync(userId, connection);
-
-                if (!checkForUserExists)
+                if (!await CheckUserForAvailabilityAsync(userId, connection))
                     return Results.Json("Пользователь не найден", jsonSerializerOptions, "application/json", 404);
+
+                await connection.OpenAsync();
 
                 string? feed = await cache.GetStringAsync($"feed-user-{userId}");
 
@@ -609,6 +606,560 @@ namespace snhw
                 await connection.CloseAsync();
             }
         }
+
+        #endregion
+
+        #region Dialog section
+
+        public async Task<IResult> DialogCreateAsync(DialogDataSet dialogData)
+        {
+            using NpgsqlConnection connection = new(connectionString);
+
+            if (!await CheckUserForAvailabilityAsync(dialogData.UserId, connection))
+                throw new Exception("Пользователь не найден");
+
+            string sqlText = string.Empty;
+
+            bool dialogUserPartitionTableExists = false; 
+            bool dialogContactPartitionTableExists = false;
+            bool dialogMessagesPartitionTableExists = false;
+
+            if (dialogData.DialogId == null)
+                dialogData.DialogId = Guid.NewGuid();
+
+            string dialogUserPartitionTableName = $"sn_user_dialogs_{dialogData.UserId.ToString().Replace('-', '_')}";
+            string dialogContactPartitionTableName = $"sn_user_dialogs_{dialogData.Contact.UserId.ToString().Replace('-', '_')}";
+            string dialogMessagesPartitionTableName = $"sn_user_dialog_messages_{dialogData.DialogId.ToString().Replace('-', '_')}";
+
+            try
+            {
+                await connection.OpenAsync();
+                sqlText = $"SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_schema = 'public' " +
+                    $"AND table_name = '{dialogUserPartitionTableName}');";
+
+                await using var checkCommand = new NpgsqlCommand(sqlText, connection);
+                {
+                    using NpgsqlDataReader checkReader = await checkCommand.ExecuteReaderAsync();
+                    {
+                        if (checkReader.HasRows)
+                        {
+                            while (checkReader.Read())
+                            {
+                                dialogUserPartitionTableExists = checkReader.GetBoolean(0);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                    jsonSerializerOptions, "application/json", 500);
+            }
+            finally
+            {
+                await connection.CloseAsync();
+            }
+
+            if (!dialogUserPartitionTableExists)
+            {
+                await connection.OpenAsync();
+
+                try
+                {
+                    sqlText = $"CREATE TABLE {dialogUserPartitionTableName} PARTITION OF sn_user_dialogs FOR VALUES IN('{dialogData.UserId}')";
+                    await using var createCommand = new NpgsqlCommand(sqlText, connection);
+                    await createCommand.ExecuteNonQueryAsync();
+                }
+                catch (Exception ex)
+                {
+                    return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                    jsonSerializerOptions, "application/json", 500);
+                }
+                finally
+                {
+                    await connection.CloseAsync();
+                }
+            }
+
+            try
+            {
+                await connection.OpenAsync();
+                sqlText = $"SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_schema = 'public' " +
+                    $"AND table_name = '{dialogContactPartitionTableName}');";
+
+                await using var checkCommand = new NpgsqlCommand(sqlText, connection);
+                {
+                    using NpgsqlDataReader checkReader = await checkCommand.ExecuteReaderAsync();
+                    {
+                        if (checkReader.HasRows)
+                        {
+                            while (checkReader.Read())
+                            {
+                                dialogContactPartitionTableExists = checkReader.GetBoolean(0);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                    jsonSerializerOptions, "application/json", 500);
+            }
+            finally
+            {
+                await connection.CloseAsync();
+            }
+
+            if (!dialogContactPartitionTableExists)
+            {
+                await connection.OpenAsync();
+
+                try
+                {
+                    sqlText = $"CREATE TABLE {dialogContactPartitionTableName} PARTITION OF sn_user_dialogs FOR VALUES IN('{dialogData.Contact.UserId}')";
+                    await using var createCommand = new NpgsqlCommand(sqlText, connection);
+                    await createCommand.ExecuteNonQueryAsync();
+                }
+                catch (Exception ex)
+                {
+                    return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                        jsonSerializerOptions, "application/json", 500);
+                }
+                finally
+                {
+                    await connection.CloseAsync();
+                }
+            }
+
+            try
+            {
+                await connection.OpenAsync();
+                sqlText = $"SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_schema = 'public' " +
+                    $"AND table_name = '{dialogMessagesPartitionTableName}');";
+
+                await using var checkCommand = new NpgsqlCommand(sqlText, connection);
+                {
+                    using NpgsqlDataReader checkReader = await checkCommand.ExecuteReaderAsync();
+                    {
+                        if (checkReader.HasRows)
+                        {
+                            while (checkReader.Read())
+                            {
+                                dialogMessagesPartitionTableExists = checkReader.GetBoolean(0);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                    jsonSerializerOptions, "application/json", 500);
+            }
+            finally
+            {
+                await connection.CloseAsync();
+            }
+
+            if (!dialogMessagesPartitionTableExists)
+            {
+                await connection.OpenAsync();
+
+                try
+                {
+                    sqlText = $"CREATE TABLE {dialogMessagesPartitionTableName} PARTITION OF sn_user_dialog_messages FOR VALUES IN('{dialogData.DialogId}')";
+                    await using var createCommand = new NpgsqlCommand(sqlText, connection);
+                    await createCommand.ExecuteNonQueryAsync();
+                }
+                catch (Exception ex)
+                {
+                    return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                        jsonSerializerOptions, "application/json", 500);
+                }
+                finally
+                {
+                    await connection.CloseAsync();
+                }
+            }
+
+            Guid newMessageId = Guid.NewGuid();
+            DateTime timeToInsert = DateTime.UtcNow;
+
+            await connection.OpenAsync();
+            await using NpgsqlTransaction messageInsertTransaction = await connection.BeginTransactionAsync();
+            {
+                try
+                {
+                    sqlText = $"INSERT INTO {dialogMessagesPartitionTableName} " +
+                        " (dialog_id, message_id, ";
+                    
+                    if (dialogData.Message.ParentId != null)
+                        sqlText += "message_parent_id, ";
+
+                    sqlText += "message_created, message_text, message_author_id) " +
+                        " VALUES " +
+                        " (@dialog_id, @message_id, ";
+                    
+                    if (dialogData.Message.ParentId != null)
+                        sqlText += "@message_parent_id, ";
+                    
+                    sqlText += "@message_created, @message_text, @message_author_id) " +
+                        " RETURNING message_id";
+
+                    await using var insertCommand = new NpgsqlCommand(sqlText, connection, messageInsertTransaction)
+                    {
+                        Parameters =
+                        {
+                            new("@dialog_id", dialogData.DialogId),
+                            new("@message_id", newMessageId),
+                            new("@message_created", timeToInsert),
+                            new("@message_text", dialogData.Message.Text),
+                            new("@message_author_id", dialogData.UserId)
+                        }
+                    };
+
+                    if (dialogData.Message.ParentId != null)
+                        insertCommand.Parameters.Add(new("message_parent_id", dialogData.Message.ParentId));
+
+                    object? result = await insertCommand.ExecuteScalarAsync()
+                        ?? throw new Exception("Не удалось получить идентификатор сообщения. Пусто");
+
+                    if (!Guid.TryParse(result.ToString(), out Guid _result))
+                        throw new Exception($"Не удалось получить идентификатор сообщения. Значение: {result}");
+
+                    await messageInsertTransaction.CommitAsync();
+                }
+                catch (Exception ex)
+                {
+                    await messageInsertTransaction.RollbackAsync();
+
+                    return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                        jsonSerializerOptions, "application/json", 500);
+                }
+                finally
+                {
+                    await connection.CloseAsync();
+                }
+            }
+
+            await connection.OpenAsync();
+            await using NpgsqlTransaction dialogUserInsertTransaction = await connection.BeginTransactionAsync();
+            {
+                try
+                {                    
+                    sqlText = $"INSERT INTO {dialogUserPartitionTableName} " +
+                        " (user_id, dialog_id, dialog_name, dialog_status, dialog_status_time, message_id, message_status, message_status_time) " +
+                        " VALUES " +
+                        " (@user_id, @dialog_id, @dialog_name, @dialog_status, @dialog_status_time, @message_id, @message_status, @message_status_time) " +
+                        " RETURNING message_id";
+
+                    await using var insertCommand = new NpgsqlCommand(sqlText, connection, dialogUserInsertTransaction)
+                    {
+                        Parameters =
+                        {
+                            new("@user_id", dialogData.UserId),
+                            new("@dialog_id", dialogData.DialogId),
+                            new("@dialog_name", dialogData.Name),
+                            new("@dialog_status", 1),
+                            new("@dialog_status_time", timeToInsert),
+                            new("@message_id", newMessageId),
+                            new("@message_status", 1),
+                            new("@message_status_time", timeToInsert),
+                        }
+                    };
+
+                    object? result = await insertCommand.ExecuteScalarAsync()
+                        ?? throw new Exception("Не удалось получить идентификатор сообщения. Пусто");
+
+                    if (!Guid.TryParse(result.ToString(), out Guid _result))
+                        throw new Exception($"Не удалось получить идентификатор сообщения. Значение: {result}");
+
+                    await dialogUserInsertTransaction.CommitAsync();
+                }
+                catch (Exception ex)
+                {
+                    await dialogUserInsertTransaction.RollbackAsync();
+
+                    return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                        jsonSerializerOptions, "application/json", 500);
+                }
+                finally
+                {
+                    await connection.CloseAsync();
+                }
+            }
+
+            await connection.OpenAsync();
+            await using NpgsqlTransaction dialogContactInsertTransaction = await connection.BeginTransactionAsync();
+            {
+                try
+                {
+                    sqlText = $"INSERT INTO {dialogContactPartitionTableName} " +
+                        " (user_id, dialog_id, dialog_name, dialog_status, dialog_status_time, message_id, message_status, message_status_time) " +
+                        " VALUES " +
+                        " (@user_id, @dialog_id, @dialog_name, @dialog_status, @dialog_status_time, @message_id, @message_status, @message_status_time) " +
+                        " RETURNING message_id";
+
+                    await using var insertCommand = new NpgsqlCommand(sqlText, connection, dialogContactInsertTransaction)
+                    {
+                        Parameters =
+                        {
+                            new("@user_id", dialogData.Contact.UserId),
+                            new("@dialog_id", dialogData.DialogId),
+                            new("@dialog_name", dialogData.Name),
+                            new("@dialog_status", 1),
+                            new("@dialog_status_time", timeToInsert),
+                            new("@message_id", newMessageId),
+                            new("@message_status", 1),
+                            new("@message_status_time", timeToInsert),
+                        }
+                    };
+
+                    object? result = await insertCommand.ExecuteScalarAsync()
+                        ?? throw new Exception("Не удалось получить идентификатор сообщения. Пусто");
+
+                    if (!Guid.TryParse(result.ToString(), out Guid _result))
+                        throw new Exception($"Не удалось получить идентификатор сообщения. Значение: {result}");
+
+                    await dialogContactInsertTransaction.CommitAsync();
+                }
+                catch (Exception ex)
+                {
+                    await dialogContactInsertTransaction.RollbackAsync();
+
+                    return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                        jsonSerializerOptions, "application/json", 500);
+                }
+                finally
+                {
+                    await connection.CloseAsync();
+                }
+
+                return Results.Json(new { DialogId = dialogData.DialogId, MessageId = newMessageId }, jsonSerializerOptions, "application/json", 200);
+            }
+        }
+
+        public async Task<IResult> DialogGetAsync(Guid userId, Guid dialogId)
+        {
+            SemaphoreSlim taskSemaphore = new SemaphoreSlim(0);
+            Task<IResult> dialogGetCallTask = Task.Run(async () => await DialogGet(userId, dialogId, taskSemaphore));
+            Queues.RequestTaskQueue.Enqueue(dialogGetCallTask);
+
+            Queues.RequestTaskQueueSemaphore.Release();
+
+            await taskSemaphore.WaitAsync();
+
+            return await dialogGetCallTask;
+        }
+
+        public async Task<IResult> DialogDeleteAsync(DialogData dialogData)
+        {
+            using NpgsqlConnection connection = new(connectionString);
+
+            try
+            {
+                if (!await CheckUserForAvailabilityAsync(dialogData.UserId, connection))
+                    return Results.Json("Пользователь не найден", new JsonSerializerOptions(), "application/json", 404);
+
+                await connection.OpenAsync();
+
+                string sqlText = "UPDATE sn_user_dialogs " +
+                    " SET dialog_status = @dialog_status, dialog_status_time = @dialog_status_time " +
+                    " WHERE user_id = @user_id AND dialog_id = @dialog_id";
+
+                await using var updateCommand = new NpgsqlCommand(sqlText, connection)
+                {
+                    Parameters =
+                    {
+                        new("@user_id", dialogData.UserId),
+                        new("@dialog_id", dialogData.DialogId),
+                        new("@dialog_status", -1),
+                        new("@dialog_status_time", DateTimeOffset.UtcNow),
+                    }
+                };
+
+                await updateCommand.ExecuteNonQueryAsync();
+
+                return Results.Ok();
+            }
+            catch (Exception ex)
+            {
+                return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                    jsonSerializerOptions, "application/json", 500);
+            }
+            finally
+            {
+                await connection.CloseAsync();
+            }
+        }
+
+        public async Task<IResult> DialogUpdateAsync(DialogDataSet dialogData)
+        {
+            using NpgsqlConnection connection = new(connectionString);
+
+            try
+            {
+                DateTime dateTimNow = DateTime.UtcNow;
+
+                if (!await CheckUserForAvailabilityAsync(dialogData.UserId, connection))
+                    return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
+                
+                if (!string.IsNullOrEmpty(dialogData.Message.Text))
+                {
+                    string sqlText = "SELECT DISTINCT " +
+                            " b.message_text " +
+                            " FROM public.sn_user_dialog_messages b " +
+                            " WHERE message_id = @message_id";
+                    
+                    bool readyForEditText = false;
+
+                    try
+                    {
+                        await connection.OpenAsync();
+
+                        await using var selectCommand = new NpgsqlCommand(sqlText, connection)
+                        {
+                            Parameters =
+                            {
+                                new("@message_id", dialogData.Message.Id)
+                            }
+                        };
+
+                        using (NpgsqlDataReader reader = await selectCommand.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                string messageText = reader.GetString(0);
+                                if (messageText != dialogData.Message.Text)
+                                {
+                                    readyForEditText = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                            jsonSerializerOptions, "application/json", 500);
+                    }
+                    finally
+                    {
+                        await connection.CloseAsync();
+                    }
+
+                    if (readyForEditText)
+                    {
+                        try
+                        {
+                            await connection.OpenAsync();
+                            sqlText = "UPDATE sn_user_dialog_messages SET message_processed=@message_processed, message_text=@message_text ";
+
+                            if (dialogData.Message.ParentId != null) 
+                            {
+                                sqlText += ", message_parent_id=@message_parent_id ";
+                            }
+
+                            sqlText += " WHERE message_id=@message_id AND dialog_id=@dialog_id";
+
+                            await using var updateCommand = new NpgsqlCommand(sqlText, connection)
+                            {
+                                Parameters =
+                                {
+                                    new("@message_id", dialogData.Message.Id),
+                                    new("@dialog_id", dialogData.DialogId),
+                                    new("@message_text", dialogData.Message.Text),
+                                    new("@message_processed", dateTimNow)
+                                }
+                            };
+
+                            if (dialogData.Message.ParentId != null)
+                            {
+                                updateCommand.Parameters.Add(new("@message_parent_id", dialogData.Message.ParentId));
+                            }
+
+                            await updateCommand.ExecuteNonQueryAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                            jsonSerializerOptions, "application/json", 500);
+                        }
+                        finally
+                        {
+                            await connection.CloseAsync();
+                        }
+                    }
+                }
+
+                // обновление сообщения для пользователя
+                try
+                {
+                    await connection.OpenAsync();
+                    string sqlText = "UPDATE sn_user_dialogs SET dialog_name=@dialog_name ";
+
+                    if (dialogStatusList.Contains(dialogData.Status))
+                    {
+                        sqlText += ", dialog_status=@dialog_status, dialog_status_time=@dialog_status_time ";
+                    }
+
+                    if (messageStatusList.Contains(dialogData.Message.Status))
+                    {
+                        sqlText += ", message_status=@message_status, message_status_time=@message_status_time ";
+                    }
+
+                    sqlText += " WHERE user_id = @user_id AND message_id = @message_id AND dialog_id = @dialog_id";
+
+                    await using var updateCommand = new NpgsqlCommand(sqlText, connection)
+                    {
+                        Parameters =
+                        {
+                            new("@user_id", dialogData.UserId),
+                            new("@message_id", dialogData.Message.Id),
+                            new("@dialog_id", dialogData.DialogId),
+                            new("@dialog_name", dialogData.Name)
+                        }
+                    };
+
+                    if (dialogStatusList.Contains(dialogData.Status))
+                    {
+                        updateCommand.Parameters.Add(new("@dialog_status", dialogData.Status));
+                        updateCommand.Parameters.Add(new("@dialog_status_time", dateTimNow));
+                    }
+
+                    if (messageStatusList.Contains(dialogData.Message.Status))
+                    {
+                        updateCommand.Parameters.Add(new("@message_status", dialogData.Message.Status));
+                        updateCommand.Parameters.Add(new("@message_status_time", dateTimNow));
+                    }
+
+                    await updateCommand.ExecuteNonQueryAsync();
+                }
+                catch (Exception ex)
+                {
+                    return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                    jsonSerializerOptions, "application/json", 500);
+                }
+                finally
+                {
+                    await connection.CloseAsync();
+                }
+                
+                return Results.Ok();
+            }
+            catch (Exception ex)
+            {
+                return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                    jsonSerializerOptions, "application/json", 500);
+            }
+            finally
+            {
+                await connection.CloseAsync();
+            }
+        }
+
 
         #endregion
 
@@ -729,13 +1280,13 @@ namespace snhw
                     var _postInfo = new PostGetData()
                     {
                         Id = postId,
-                        Created = reader.GetDateTime(1).Millisecond,                        
+                        Created = reader.GetDateTime(1).Ticks,                        
                         Text = reader.GetString(3),
                         Status = reader.GetInt16(4)
                     };
 
                     if (!(await reader.IsDBNullAsync(2)))
-                        _postInfo.Processed = reader.GetDateTime(2).Millisecond;
+                        _postInfo.Processed = reader.GetDateTime(2).Ticks;
 
                     postList.Add(_postInfo);
                 }
@@ -798,6 +1349,183 @@ namespace snhw
                 }
 
                 return Results.Json(userInfo, new System.Text.Json.JsonSerializerOptions(), "application/json", 200);
+            }
+            catch (Exception ex)
+            {
+                return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                    jsonSerializerOptions, "application/json", 500);
+            }
+            finally
+            {
+                connection.Close();
+                semaphoreSlim.Release();
+            }
+        }
+
+        private async Task<IResult> DialogGet(Guid userId, Guid dialogId, SemaphoreSlim semaphoreSlim)
+        {
+            using NpgsqlConnection connection = new(connectionString);
+            DialogDataGet dialogInfo = new DialogDataGet();
+
+            // сбор информации о диалоге и контактах
+            try
+            {
+                connection.Open();
+
+                string sqlText = "SELECT DISTINCT " +
+                    " user_id, dialog_id, dialog_name, " +
+                    " dialog_status, dialog_status_time " +                    
+                    " FROM sn_user_dialogs WHERE user_id <> @user_id and dialog_id = @dialog_id";
+
+                await using var selectCommand = new NpgsqlCommand(sqlText, connection)
+                {
+                    Parameters =
+                    {
+                        new("@user_id", userId),
+                        new("@dialog_id", dialogId)
+                    }
+                };
+
+                using NpgsqlDataReader reader = await selectCommand.ExecuteReaderAsync();
+
+                if (!reader.HasRows)
+                    return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
+                bool firstLoop = true;
+
+                while (reader.Read())
+                {
+                    if (firstLoop)
+                    {
+                        dialogInfo.UserId = userId;
+                        dialogInfo.DialogId = reader.GetGuid(1);
+                        dialogInfo.Name = reader.GetString(2);
+                        dialogInfo.Status = reader.GetInt16(3);
+                        dialogInfo.StatusTime = reader.GetDateTime(4).Ticks;
+                    }
+
+                    dialogInfo.Contacts.Add(new DialogContactData()
+                    {
+                        UserId = reader.GetGuid(0)
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                    jsonSerializerOptions, "application/json", 500);
+            }
+            finally
+            {
+                connection.Close();
+            }
+
+            // сбор сообщений для пользователя
+            try
+            {
+                connection.Open();
+
+                string sqlText = "SELECT DISTINCT " +
+                    " message_id, message_status, message_status_time " +
+                    $" FROM sn_user_dialogs WHERE user_id = @user_id and dialog_id = @dialog_id";
+
+                await using var selectCommand = new NpgsqlCommand(sqlText, connection)
+                {
+                    Parameters =
+                        {
+                            new("@user_id", userId),
+                            new("@dialog_id", dialogId)
+                        }
+                };
+
+                using NpgsqlDataReader reader = await selectCommand.ExecuteReaderAsync();
+
+                if (!reader.HasRows)
+                    return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
+                
+                while (reader.Read())
+                {
+                    dialogInfo.Messages.Add(new DialogMessageData()
+                    {
+                        Id = reader.GetGuid(0),
+                        Status = reader.GetInt16(1),
+                        StatusTime = reader.GetDateTime(2).Ticks
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                    jsonSerializerOptions, "application/json", 500);
+            }
+            finally
+            {
+                connection.Close();
+            }
+
+            // сбор сообщений диалога
+            try
+            {
+
+                connection.Open();
+
+                string sqlText = "SELECT " +
+                    " a.message_id, a.message_status, a.message_status_time, " +
+                    " b.message_parent_id, b.message_created, b.message_processed, b.message_text," +
+                    " b.message_author_id, a.user_id " +
+                    " FROM public.sn_user_dialogs a " +
+                    " JOIN public.sn_user_dialog_messages b " +
+                    " on a.message_id = b.message_id " +
+                    " WHERE a.dialog_id = @dialog_id";
+
+                await using var selectCommand = new NpgsqlCommand(sqlText, connection)
+                {
+                    Parameters =
+                    {
+                        new("@dialog_id", dialogId)
+                    }
+                };
+
+                using NpgsqlDataReader reader = await selectCommand.ExecuteReaderAsync();
+
+                if (!reader.HasRows)
+                    return Results.Json($"Сообщения по диалогу {dialogId} не найдены", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
+
+                while (reader.Read())
+                {
+                    var message = new DialogMessageData()
+                    {
+                        Id = reader.GetGuid(0),
+                        Status = reader.GetInt16(1),
+                        StatusTime = reader.GetDateTime(2).Ticks,
+                        Created = reader.GetDateTime(4).Ticks,
+                        Text = reader.GetString(6),
+                        AuthorId = reader.GetGuid(7)
+                    };
+                    if (!reader.IsDBNull(3))
+                        message.ParentId = reader.GetGuid(3);
+
+                    if (!reader.IsDBNull(5))
+                        message.Processed = reader.GetDateTime(5).Ticks;
+
+                    Guid messageUserId = reader.GetGuid(8);
+
+                    if (messageUserId == userId)
+                    {
+                        if (!dialogInfo.Messages.Contains(message))
+                            dialogInfo.Messages.Add(message);
+                    }
+                    else
+                    {
+                        var contact = dialogInfo.Contacts.FirstOrDefault(c => c.UserId == messageUserId);
+                        if (contact == null)
+                            continue;
+
+                        if (!contact.Messages.Contains(message))
+                            contact.Messages.Add(message);
+                    }
+                }
+
+                return Results.Json(dialogInfo, new System.Text.Json.JsonSerializerOptions(), "application/json", 200);
             }
             catch (Exception ex)
             {
@@ -923,6 +1651,7 @@ namespace snhw
         {
             try
             {
+                await connection.OpenAsync();
                 string sqlText = "SELECT 1 FROM sn_user_info WHERE user_id = @user_id";
 
                 await using var selectCommand = new NpgsqlCommand(sqlText, connection)
@@ -935,15 +1664,16 @@ namespace snhw
 
                 using (NpgsqlDataReader reader = await selectCommand.ExecuteReaderAsync())
                 {
-                    if (!reader.HasRows)
-                        return false;
-                    else
-                        return true;
+                    return reader.HasRows;
                 }
             }
             catch (Exception ex)
             {
                 throw ex;
+            }
+            finally
+            {
+                await connection.CloseAsync();
             }
         }
 
@@ -951,6 +1681,7 @@ namespace snhw
         {
             try
             {
+                await connection.OpenAsync();
                 string sqlText = "SELECT 1 FROM sn_user_posts WHERE post_id = @post_id";
 
                 await using var selectCommand = new NpgsqlCommand(sqlText, connection)
@@ -963,15 +1694,16 @@ namespace snhw
 
                 using (NpgsqlDataReader reader = await selectCommand.ExecuteReaderAsync())
                 {
-                    if (!reader.HasRows)
-                        return false;
-                    else
-                        return true;
+                    return reader.HasRows;
                 }
             }
             catch (Exception ex)
             {
                 throw ex;
+            }
+            finally
+            {
+                await connection.CloseAsync();
             }
         }
 
@@ -1004,18 +1736,17 @@ namespace snhw
 
                     try
                     {
-                        await connection.OpenAsync();
-
-                        bool checkForUserExists = await CheckUserForAvailabilityAsync(userId, connection);
-                        if (!checkForUserExists)
+                        if (!await CheckUserForAvailabilityAsync(userId, connection))
                             return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
 
+                        await connection.OpenAsync();
+
                         string sqlText = $"select * from (SELECT user_id, post_id, created, processed, text, row_number() " +
-                        $"OVER(PARTITION BY user_id ORDER BY processed DESC) rn " +
-                        $"FROM sn_user_posts s " +
-                        $"WHERE user_id<> @user_id AND status = 1 " +
-                        $"AND user_id IN (SELECT contact_user_id FROM sn_user_contacts WHERE user_id = @user_id) ) " +
-                        $"WHERE rn <= 3 ORDER BY processed DESC LIMIT 1000";
+                            $"OVER(PARTITION BY user_id ORDER BY processed DESC) rn " +
+                            $"FROM sn_user_posts s " +
+                            $"WHERE user_id<> @user_id AND status = 1 " +
+                            $"AND user_id IN (SELECT contact_user_id FROM sn_user_contacts WHERE user_id = @user_id) ) " +
+                            $"WHERE rn <= 3 ORDER BY processed DESC LIMIT 1000";
 
                         await using var selectCommand = new NpgsqlCommand(sqlText, connection)
                         {

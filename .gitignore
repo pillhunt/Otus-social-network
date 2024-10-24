@@ -402,3 +402,4 @@ FodyWeavers.xsd
 /sql_init_data/user_posts.csv
 /sql_init_data/user_contacts.csv
 /redis/dump.rdb
+/redis/dump.rdb

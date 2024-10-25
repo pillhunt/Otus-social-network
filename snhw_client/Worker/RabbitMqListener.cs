@@ -47,7 +47,6 @@ namespace snhw_client.Worker
             consumer.Received += (ch, ea) =>
             {
                 var content = Encoding.UTF8.GetString(ea.Body.ToArray());
-                Debug.WriteLine(content);
                 _channel.BasicAck(ea.DeliveryTag, false);
             };
 

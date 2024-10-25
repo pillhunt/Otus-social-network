@@ -1,6 +1,9 @@
+
+using System.Text;
 using System.Text.Json;
 using System.Security.Cryptography;
 
+using Microsoft.VisualStudio.Threading;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,8 +12,8 @@ using NpgsqlTypes;
 
 using snhw.Data;
 using snhw.Common;
-using System.Reflection.Metadata.Ecma335;
-using System.Xml;
+using snhw.Rabbit;
+using Newtonsoft.Json;
 
 namespace snhw
 {
@@ -34,6 +37,23 @@ namespace snhw
             connectionString = configuration.GetConnectionString("db_master") ??
                 throw new Exception("Не удалось получить настройку подключения к БД");
         }
+
+        #region Rabbit
+        public async Task<IResult> SendMessage(string message, IRabbitMqService service)
+        {
+            try
+            {
+                service.SendMessage(message);
+                return Results.Ok();
+            }
+            catch (Exception ex)
+            {
+                return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                        jsonSerializerOptions, "application/json", 500);
+            }
+        }
+
+        #endregion
 
         #region User section
 
@@ -454,7 +474,7 @@ namespace snhw
 
         #region Post section
 
-        public async Task<IResult> PostCreateAsync(Guid userId, string text)
+        public async Task<IResult> PostCreateAsync(Guid userId, string text, IRabbitMqService service)
         {
             
             PostingPerson? postingPerson = Queues.ReadyForPostingPerson.FirstOrDefault(p => p.UserId == userId)
@@ -467,7 +487,21 @@ namespace snhw
                 Queues.ReadyForPostingPerson.Add(postingPerson);
             }
 
-            return await postingPerson.PrepareForPublish(text, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            var textTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            IResult result = await postingPerson.PrepareForPublish(text, textTime);
+
+            var json = new
+            {
+                user = userId,
+                time = textTime,
+                messageHead = text.Take(50).ToString(),
+                status = 1
+            };
+
+            string jsonMessage = System.Text.Json.JsonSerializer.Serialize(json);
+            service.SendMessage(jsonMessage);
+
+            return result;
         }
 
         public async Task<IResult> PostGetAsync(Guid userId, Guid postId)
@@ -1780,7 +1814,7 @@ namespace snhw
                             feedPostData.Add(_feedPost);
                         }
 
-                        var jsonFeed = JsonSerializer.Serialize(feedPostData);
+                        var jsonFeed = System.Text.Json.JsonSerializer.Serialize(feedPostData);
 
                         cache.SetString(cacheName, jsonFeed, new DistributedCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(2) });
 

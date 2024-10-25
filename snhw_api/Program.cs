@@ -1,8 +1,7 @@
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.OpenApi.Models;
-
+using snhw.Rabbit;
 using snhw.Workers;
-using StackExchange.Redis;
 
 namespace snhw
 {
@@ -32,6 +31,7 @@ namespace snhw
 
             builder.Services.AddHostedService<RequestManager>();
             builder.Services.AddHostedService<PostingManager>();
+            builder.Services.AddScoped<IRabbitMqService, RabbitMqService>();
 
             // добавляется Redis
             builder.Services.AddStackExchangeRedisCache(options => options.Configuration = redis_cs);
@@ -58,7 +58,7 @@ namespace snhw
             app.MapGroup(version).ContactGroup().WithTags("Contact");
             app.MapGroup(version).DialogGroup().WithTags("Dialog");
             app.MapGroup(version).PostGroup().WithTags("Post");
-
+            app.MapGroup(version).RabbitGroup().WithTags("Rabbit");
             app.Run();
         }        
     }    

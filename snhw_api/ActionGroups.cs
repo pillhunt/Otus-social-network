@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Caching.Distributed;
 
 using snhw.Data;
+using snhw.Rabbit;
 
 namespace snhw
 {
@@ -111,7 +112,7 @@ namespace snhw
         {
             #region Post section
 
-            group.MapPost("/post", async (Guid userId, [FromBody] string text) => await actions.PostCreateAsync(userId, text))
+            group.MapPost("/post", async (Guid userId, [FromBody] string text, IRabbitMqService service) => await actions.PostCreateAsync(userId, text, service))
             .WithName("PostCreate")
             .Produces(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
@@ -190,6 +191,20 @@ namespace snhw
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
+            return group;
+        }
+
+
+        public static RouteGroupBuilder RabbitGroup(this RouteGroupBuilder group)
+        {
+            string commonName = "Rabbit";
+
+            group.MapPost("/message/send", async (string message, IRabbitMqService service) => await actions.SendMessage(message, service))
+            .WithName($"{commonName}Create")
+            .Produces(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
+            .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
+            ;
             return group;
         }
     }

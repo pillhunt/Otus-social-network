@@ -75,6 +75,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sql_init_scripts", "sql_ini
 		sql_init_scripts\init_tables.sql = sql_init_scripts\init_tables.sql
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "rabbit", "rabbit", "{A150CE64-C9E3-41E9-879F-170B9FBE4605}"
+	ProjectSection(SolutionItems) = preProject
+		rabbit\definitions.json = rabbit\definitions.json
+		rabbit\enabled_plugins = rabbit\enabled_plugins
+		rabbit\rabbitmq.conf = rabbit\rabbitmq.conf
+	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "snhw_client", "snhw_client\snhw_client.csproj", "{936D9CE1-D52C-4B32-BF39-A3E74B3ED556}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -85,6 +94,10 @@ Global
 		{68A5C9F3-5263-4EA1-BF99-28F932207783}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{68A5C9F3-5263-4EA1-BF99-28F932207783}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{68A5C9F3-5263-4EA1-BF99-28F932207783}.Release|Any CPU.Build.0 = Release|Any CPU
+		{936D9CE1-D52C-4B32-BF39-A3E74B3ED556}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{936D9CE1-D52C-4B32-BF39-A3E74B3ED556}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{936D9CE1-D52C-4B32-BF39-A3E74B3ED556}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{936D9CE1-D52C-4B32-BF39-A3E74B3ED556}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -100,6 +113,7 @@ Global
 		{8A47DC2C-D393-4807-83FC-208AEDFF72FE} = {5ED214FC-D827-4837-8FB8-2F41D6AED68A}
 		{29538FE4-46C6-4259-9E34-03C646B2F2EE} = {5ED214FC-D827-4837-8FB8-2F41D6AED68A}
 		{8D89AA17-CA23-4FE7-8583-843D75445E34} = {5ED214FC-D827-4837-8FB8-2F41D6AED68A}
+		{A150CE64-C9E3-41E9-879F-170B9FBE4605} = {5ED214FC-D827-4837-8FB8-2F41D6AED68A}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1209B051-6806-4242-A637-0209F89DB1CA}

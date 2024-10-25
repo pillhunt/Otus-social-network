@@ -1,44 +1,25 @@
-# 1. Создаем приложение Angular
-#FROM node:alpine as builder
-#
-#WORKDIR /client
-#COPY ./snhw_client/package.json ./snhw_client/package-lock.json .
-#ENV CI=1
-#RUN npm i
-#
-#COPY ./snhw_client .
-#RUN npm run build 
-##-- --prod --output-path=/dist
+#See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
 
-# 2. Развертываем приложение Angular на NGINX
-#FROM nginx:alpine
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+USER app
+WORKDIR /app
+EXPOSE 8080
+EXPOSE 8081
 
-# Заменяем дефолтную страницу nginx соответствующей веб-приложению
-#RUN rm -rf /usr/share/nginx/html/*
-#COPY /snhw_client/index.html /usr/share/nginx/html
-#COPY --from=builder /snhw_client/src/ /usr/share/nginx/html/src/
-
-#происходит монтирование на образе
-#COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
-
-#ENTRYPOINT ["nginx", "-g", "daemon off;"]
-
-FROM ubuntu
-
-ENV DEBIAN_FRONTEND noninteractive
-
-RUN apt-get update && apt-get install -y nodejs npm && rm -rf /var/lib/apt/lists/*
-RUN npm install -g yarn
-
-WORKDIR /srv/snhw_client
-COPY ./package*.json ./
-RUN yarn global add @vue/cli
-RUN yarn install
-
-# Bundle app source
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+ARG BUILD_CONFIGURATION=Debug
+WORKDIR /src
+COPY ["./snhw_client/snhw_client.csproj", "./snhw_client/"]
+RUN dotnet restore "./snhw_client/snhw_client.csproj"
 COPY . .
+WORKDIR "/src/snhw_client"
+RUN dotnet build "./snhw_client.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
-EXPOSE 8082
+FROM build AS publish
+ARG BUILD_CONFIGURATION=Debug
+RUN dotnet publish "./snhw_client.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
-#CMD [ "yarn", "serve"]
-
+FROM base AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+ENTRYPOINT ["dotnet", "snhw_client.dll"]

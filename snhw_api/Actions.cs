@@ -494,7 +494,7 @@ namespace snhw
             {
                 user = userId,
                 time = textTime,
-                messageHead = text.Take(50).ToString(),
+                messageHead = text.Substring(0, 50),
                 status = 1
             };
 

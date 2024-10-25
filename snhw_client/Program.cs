@@ -1,3 +1,5 @@
+using snhw_client.Worker;
+
 namespace snhw_client
 {
     public class Program
@@ -8,6 +10,7 @@ namespace snhw_client
 
             // Add services to the container.
             builder.Services.AddControllersWithViews();
+            builder.Services.AddHostedService<RabbitMqListener>();
 
             var app = builder.Build();
 

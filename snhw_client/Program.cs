@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 using snhw_client.Worker;
 
 namespace snhw_client
@@ -7,10 +9,12 @@ namespace snhw_client
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            Guid.TryParse(args[0].ToString(), out Guid consumerId);
+            Console.WriteLine(consumerId);
 
             // Add services to the container.
             builder.Services.AddControllersWithViews();
-            builder.Services.AddHostedService<RabbitMqListener>();
+            builder.Services.AddHostedService<RabbitMqListener>(listener => new RabbitMqListener(consumerId.ToString()));
 
             var app = builder.Build();
 

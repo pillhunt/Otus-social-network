@@ -1,4 +1,4 @@
-﻿namespace snhw.Data
+﻿namespace snhw_api.Data
 {
 
     public class AuthRequestData

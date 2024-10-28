@@ -15,11 +15,11 @@
       - 15672
       - 5672
     labels:
-      NAME: "snhw_rabbitmq"
+      name: "snhw_rabbitmq"
     volumes:
       - ./rabbit/enabled_plugins:/etc/rabbitmq/enabled_plugins
-      - ./rabbit/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
-      - ./rabbit/definitions.json:/etc/rabbitmq/definitions.json:ro
+      # - ./rabbit/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      # - ./rabbit/definitions.json:/etc/rabbitmq/definitions.json:ro
     networks:
       - snhw_network
 #snhw_nginx
@@ -180,9 +180,9 @@
       - snhw_rabbitmq
     networks:
       - snhw_network
-#snhw_client
-  snhw_client:
-    container_name: snhw_client
+#snhw_client1
+  snhw_client1:
+    container_name: snhw_client1
     build:
       context: .
       dockerfile: ./snhw_client/Dockerfile
@@ -196,6 +196,28 @@
       - snhw_db_master
       - snhw_redis
       - snhw_rabbitmq
+    command:
+        02931669-9dbb-4685-9ab7-6e21f7741b41
+    networks:
+      - snhw_network
+#snhw_client2
+  snhw_client2:
+    container_name: snhw_client2
+    build:
+      context: .
+      dockerfile: ./snhw_client/Dockerfile
+    ports:
+      - 5056:8080
+    depends_on:
+      - snhw_db_master
+      - snhw_rabbitmq
+    restart: unless-stopped
+    links:
+      - snhw_db_master
+      - snhw_redis
+      - snhw_rabbitmq
+    command:
+        00002f23-cf85-40f6-b2da-5dbdfa52d7ad
     networks:
       - snhw_network
 #snhw_influxdb

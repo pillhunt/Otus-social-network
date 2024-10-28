@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.OpenApi.Models;
-using snhw.Rabbit;
-using snhw.Workers;
+using snhw_api.Rabbit;
+using snhw_api.Workers;
 
-namespace snhw
+namespace snhw_api
 {
     public class Program
     {
@@ -58,7 +58,7 @@ namespace snhw
             app.MapGroup(version).ContactGroup().WithTags("Contact");
             app.MapGroup(version).DialogGroup().WithTags("Dialog");
             app.MapGroup(version).PostGroup().WithTags("Post");
-            app.MapGroup(version).RabbitGroup().WithTags("Rabbit");
+            //app.MapGroup(version).RabbitGroup().WithTags("Rabbit");
             app.Run();
         }        
     }    

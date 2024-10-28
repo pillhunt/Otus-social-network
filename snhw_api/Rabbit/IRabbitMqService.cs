@@ -1,4 +1,4 @@
-﻿namespace snhw.Rabbit
+﻿namespace snhw_api.Rabbit
 {
     public interface IRabbitMqService
     {

@@ -1,10 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Distributed;
 
-using snhw.Data;
-using snhw.Rabbit;
+using snhw_api.Data;
+using snhw_api.Rabbit;
 
-namespace snhw
+namespace snhw_api
 {
     public static class ActionGroups
     {
@@ -195,17 +195,17 @@ namespace snhw
         }
 
 
-        public static RouteGroupBuilder RabbitGroup(this RouteGroupBuilder group)
-        {
-            string commonName = "Rabbit";
+        //public static RouteGroupBuilder RabbitGroup(this RouteGroupBuilder group)
+        //{
+        //    string commonName = "Rabbit";
 
-            group.MapPost("/message/send", async (string message, IRabbitMqService service) => await actions.SendMessage(message, service))
-            .WithName($"{commonName}Create")
-            .Produces(StatusCodes.Status200OK)
-            .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
-            .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
-            ;
-            return group;
-        }
+        //    group.MapPost("/message/send", async (string message, IRabbitMqService service) => await actions.SendMessage(service))
+        //    .WithName($"{commonName}Create")
+        //    .Produces(StatusCodes.Status200OK)
+        //    .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
+        //    .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
+        //    ;
+        //    return group;
+        //}
     }
 }

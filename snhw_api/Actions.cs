@@ -10,12 +10,13 @@ using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using NpgsqlTypes;
 
-using snhw.Data;
-using snhw.Common;
-using snhw.Rabbit;
+using snhw_api.Data;
+using snhw_api.Common;
+using snhw_api.Rabbit;
 using Newtonsoft.Json;
+using System.Threading;
 
-namespace snhw
+namespace snhw_api
 {
     public class Actions
     {
@@ -32,26 +33,24 @@ namespace snhw
                 .SetBasePath(AppContext.BaseDirectory)
                 .AddJsonFile("appsettings.json")
                 .Build();
-
-            // connectionString = Environment.GetEnvironmentVariable("ASPNETCORE_CONNECTIONSTRINGS__DEFAULT");
             connectionString = configuration.GetConnectionString("db_master") ??
                 throw new Exception("Не удалось получить настройку подключения к БД");
         }
 
         #region Rabbit
-        public async Task<IResult> SendMessage(string message, IRabbitMqService service)
-        {
-            try
-            {
-                service.SendMessage(message);
-                return Results.Ok();
-            }
-            catch (Exception ex)
-            {
-                return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
-                        jsonSerializerOptions, "application/json", 500);
-            }
-        }
+        //public async Task<IResult> SendMessage(string message, IRabbitMqService service)
+        //{
+        //    try
+        //    {
+        //        service.SendMessage(message);
+        //        return Results.Ok();
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+        //                jsonSerializerOptions, "application/json", 500);
+        //    }
+        //}
 
         #endregion
 
@@ -476,32 +475,67 @@ namespace snhw
 
         public async Task<IResult> PostCreateAsync(Guid userId, string text, IRabbitMqService service)
         {
-            
-            PostingPerson? postingPerson = Queues.ReadyForPostingPerson.FirstOrDefault(p => p.UserId == userId)
+
+            using NpgsqlConnection connection = new(connectionString);
+
+            try
+            {
+                PostingPerson? postingPerson = Queues.ReadyForPostingPerson.FirstOrDefault(p => p.UserId == userId)
                 ?? Queues.PostingPersonsList.FirstOrDefault(p => p.UserId == userId)
                 ?? null;
 
-            if (postingPerson == null) 
-            {
-                postingPerson = new PostingPerson(userId);
-                Queues.ReadyForPostingPerson.Add(postingPerson);
+                if (postingPerson == null)
+                {
+                    postingPerson = new PostingPerson(userId);
+                    Queues.ReadyForPostingPerson.Add(postingPerson);
+                }
+
+                var textTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                IResult result = await postingPerson.PrepareForPublish(text, textTime);
+
+                string sqlText = "SELECT contact_user_id FROM public.sn_user_contacts WHERE user_id = @user_id";                
+
+                await connection.OpenAsync();
+
+                await using var selectCommand = new NpgsqlCommand(sqlText, connection)
+                {
+                    Parameters =
+                    {
+                        new("@user_id", userId)
+                    }
+                };
+
+                using NpgsqlDataReader reader = await selectCommand.ExecuteReaderAsync();
+
+                if (reader.HasRows)
+                {
+                    while (reader.Read())
+                    {
+                        Guid consumerId = reader.GetGuid(0);
+                        var json = new
+                        {
+                            consumerId = consumerId,
+                            time = textTime,
+                            messageHead = text.Length > 50 ? text.Substring(0, 50) : text,
+                            status = 1
+                        };
+
+                        string jsonMessage = System.Text.Json.JsonSerializer.Serialize(json);
+                        service.SendMessage(jsonMessage);
+                    }
+                }
+
+                return result;
             }
-
-            var textTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            IResult result = await postingPerson.PrepareForPublish(text, textTime);
-
-            var json = new
+            catch (Exception ex)
             {
-                user = userId,
-                time = textTime,
-                messageHead = text.Substring(0, 50),
-                status = 1
-            };
-
-            string jsonMessage = System.Text.Json.JsonSerializer.Serialize(json);
-            service.SendMessage(jsonMessage);
-
-            return result;
+                return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                    jsonSerializerOptions, "application/json", 500);
+            }
+            finally
+            {
+                connection.Close();
+            }
         }
 
         public async Task<IResult> PostGetAsync(Guid userId, Guid postId)

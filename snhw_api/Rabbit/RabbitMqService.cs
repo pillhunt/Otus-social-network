@@ -1,12 +1,15 @@
 ﻿
+using Newtonsoft.Json;
 using RabbitMQ.Client;
 using System.Text;
-using System.Text.Json;
+using System.Threading.Channels;
 
-namespace snhw.Rabbit
+namespace snhw_api.Rabbit
 {
     public class RabbitMqService : IRabbitMqService
     {
+        private IConnection connection;
+        private IModel channel;
         private string host { get; set; } = string.Empty;
         private string queue { get; set; } = string.Empty;
         private string exchange { get; set; } = string.Empty;
@@ -22,38 +25,46 @@ namespace snhw.Rabbit
             host = apiSettings.GetValue(typeof(string), "host").ToString();
             queue = apiSettings.GetValue(typeof(string), "queue").ToString();
             exchange = apiSettings.GetValue(typeof(string), "exchange").ToString();
+
+            var factory = new ConnectionFactory()
+            {
+                HostName = host,
+                Password = "rabbitmq",
+                UserName = "rabbitmq",
+            };
+
+            connection = factory.CreateConnection();
+            channel = connection.CreateModel();
+            channel.ExchangeDeclare(exchange, ExchangeType.Topic);
         }
 
         public void SendMessage(object obj)
         {
-            var message = JsonSerializer.Serialize(obj);
+            var message = System.Text.Json.JsonSerializer.Serialize(obj);
             SendMessage(message);
         }
 
         public void SendMessage(string message)
         {
-            var factory = new ConnectionFactory() 
-            { 
-                HostName = host ,
-                Password = "rabbitmq",
-                UserName = "rabbitmq",
-            };
-            using (var connection = factory.CreateConnection())
-            using (var channel = connection.CreateModel())
+            dynamic messageObject = JsonConvert.DeserializeObject(message);
+            string consumerId = messageObject.consumerId;
+
+            var bodyObject = new
             {
-                channel.QueueDeclare(queue: queue,
-                    durable: false,
-                    exclusive: false,
-                    autoDelete: false,
-                    arguments: null);
+                messageObject.time,
+                messageObject.messageHead,
+                messageObject.status
+            };
 
-                var body = Encoding.UTF8.GetBytes(message);
+            var body = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(bodyObject));
+            string routingKey = consumerId + "." + queue;
 
-                channel.BasicPublish(exchange: exchange,
-                    routingKey: queue,
-                    basicProperties: null,
-                    body: body);
-            }
+            channel.BasicPublish(
+                exchange: exchange,
+                routingKey: routingKey,
+                basicProperties: null,
+                body: body);
+            Console.WriteLine(exchange + ":" + routingKey + ":" + body);
         }
     }
 }

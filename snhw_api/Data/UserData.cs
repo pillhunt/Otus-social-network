@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace snhw.Data
+namespace snhw_api.Data
 {
     public class UserBaseData
     {

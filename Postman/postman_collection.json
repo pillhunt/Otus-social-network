@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "535c8279-b773-4837-8502-4d62ec9a3195",
+		"_postman_id": "248621f3-2f5f-4140-9d47-7761d74bf838",
 		"name": "API Социальной сети",
 		"description": "Домашняя работа Otus",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
@@ -959,7 +959,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n  \"userId\": \"<uuid>\",\n  \"name\": \"<string>\",\n  \"status\": \"<integer>\",\n  \"message\": {\n    \"parentId\": \"<uuid>\",\n    \"authorId\": \"<uuid>\",\n    \"status\": \"<integer>\",\n    \"text\": \"<string>\"\n  },\n  \"contact\": {\n    \"userId\": \"<uuid>\",\n    \"messages\": [\n      {\n        \"parentId\": \"<uuid>\",\n        \"authorId\": \"<uuid>\",\n        \"status\": \"<integer>\",\n        \"text\": \"<string>\"\n      }\n    ]\n  }\n}",
+									"raw": "{\n  \"userId\": \"<uuid>\",\n  \"dialogId\": \"<uuid>\",\n  \"name\": \"<string>\",\n  \"status\": \"<integer>\",\n  \"statusTime\": \"<long>\",\n  \"message\": {\n    \"id\": \"<uuid>\",\n    \"parentId\": \"<uuid>\",\n    \"authorId\": \"<uuid>\",\n    \"status\": \"<integer>\",\n    \"statusTime\": \"<long>\",\n    \"created\": \"<long>\",\n    \"processed\": \"<long>\",\n    \"text\": \"<string>\"\n  },\n  \"contact\": {\n    \"userId\": \"<uuid>\",\n    \"messages\": [\n      {\n        \"id\": \"<uuid>\",\n        \"parentId\": \"<uuid>\",\n        \"authorId\": \"<uuid>\",\n        \"status\": \"<integer>\",\n        \"statusTime\": \"<long>\",\n        \"created\": \"<long>\",\n        \"processed\": \"<long>\",\n        \"text\": \"<string>\"\n      },\n      {\n        \"id\": \"<uuid>\",\n        \"parentId\": \"<uuid>\",\n        \"authorId\": \"<uuid>\",\n        \"status\": \"<integer>\",\n        \"statusTime\": \"<long>\",\n        \"created\": \"<long>\",\n        \"processed\": \"<long>\",\n        \"text\": \"<string>\"\n      }\n    ]\n  }\n}",
 									"options": {
 										"raw": {
 											"headerFamily": "json",
@@ -1552,7 +1552,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n  \"userId\": \"<uuid>\",\n  \"dialogId\": \"<uuid>\",\n  \"name\": \"<string>\",\n  \"status\": \"<integer>\",\n  \"statusTime\": \"<long>\",\n  \"message\": {\n    \"id\": \"<uuid>\",\n    \"parentId\": \"<uuid>\",\n    \"authorId\": \"<uuid>\",\n    \"status\": \"<integer>\",\n    \"statusTime\": \"<long>\",\n    \"created\": \"<long>\",\n    \"processed\": \"<long>\",\n    \"text\": \"<string>\"\n  }\n}",
+									"raw": "{\n  \"userId\": \"<uuid>\",\n  \"dialogId\": \"<uuid>\",\n  \"name\": \"<string>\",\n  \"status\": \"<integer>\",\n  \"statusTime\": \"<long>\",\n  \"message\": {\n    \"id\": \"<uuid>\",\n    \"parentId\": \"<uuid>\",\n    \"authorId\": \"<uuid>\",\n    \"status\": \"<integer>\",\n    \"statusTime\": \"<long>\",\n    \"created\": \"<long>\",\n    \"processed\": \"<long>\",\n    \"text\": \"<string>\"\n  },\n  \"contact\": {\n    \"userId\": \"<uuid>\",\n    \"messages\": [\n      {\n        \"id\": \"<uuid>\",\n        \"parentId\": \"<uuid>\",\n        \"authorId\": \"<uuid>\",\n        \"status\": \"<integer>\",\n        \"statusTime\": \"<long>\",\n        \"created\": \"<long>\",\n        \"processed\": \"<long>\",\n        \"text\": \"<string>\"\n      },\n      {\n        \"id\": \"<uuid>\",\n        \"parentId\": \"<uuid>\",\n        \"authorId\": \"<uuid>\",\n        \"status\": \"<integer>\",\n        \"statusTime\": \"<long>\",\n        \"created\": \"<long>\",\n        \"processed\": \"<long>\",\n        \"text\": \"<string>\"\n      }\n    ]\n  }\n}",
 									"options": {
 										"raw": {
 											"headerFamily": "json",
@@ -2855,6 +2855,161 @@
 					]
 				},
 				{
+					"name": "message",
+					"item": [
+						{
+							"name": "send",
+							"item": [
+								{
+									"name": "Rabbit Create",
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/v1/message/send?message=<string>",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"v1",
+												"message",
+												"send"
+											],
+											"query": [
+												{
+													"key": "message",
+													"value": "<string>",
+													"description": "(Required) "
+												}
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "Success",
+											"originalRequest": {
+												"method": "POST",
+												"header": [],
+												"url": {
+													"raw": "{{baseUrl}}/v1/message/send?message=<string>",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"v1",
+														"message",
+														"send"
+													],
+													"query": [
+														{
+															"key": "message",
+															"value": "<string>",
+															"description": "(Required) "
+														}
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										},
+										{
+											"name": "Bad Request",
+											"originalRequest": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "application/json"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/v1/message/send?message=<string>",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"v1",
+														"message",
+														"send"
+													],
+													"query": [
+														{
+															"key": "message",
+															"value": "<string>",
+															"description": "(Required) "
+														}
+													]
+												}
+											},
+											"status": "Bad Request",
+											"code": 400,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": "{\n  \"message\": \"<string>\"\n}"
+										},
+										{
+											"name": "Server Error",
+											"originalRequest": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "application/json"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/v1/message/send?message=<string>",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"v1",
+														"message",
+														"send"
+													],
+													"query": [
+														{
+															"key": "message",
+															"value": "<string>",
+															"description": "(Required) "
+														}
+													]
+												}
+											},
+											"status": "Internal Server Error",
+											"code": 500,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": "{\n  \"message\": \"<string>\"\n}"
+										}
+									]
+								}
+							]
+						}
+					]
+				},
+				{
 					"name": "user",
 					"item": [
 						{
@@ -3339,7 +3494,7 @@
 										],
 										"body": {
 											"mode": "raw",
-											"raw": "{\n  \"firstName\": \"<string>\",\n  \"secondName\": \"<string>\",\n  \"patronimic\": \"<string>\",\n  \"birthday\": \"<dateTime>\",\n  \"personalInterest\": \"<string>\",\n  \"city\": \"<string>\",\n  \"gender\": 2\n}",
+											"raw": "{\n  \"firstName\": \"<string>\",\n  \"secondName\": \"<string>\",\n  \"patronimic\": \"<string>\",\n  \"birthday\": \"<dateTime>\",\n  \"personalInterest\": \"<string>\",\n  \"city\": \"<string>\",\n  \"gender\": \"Other\"\n}",
 											"options": {
 												"raw": {
 													"headerFamily": "json",
@@ -3372,7 +3527,7 @@
 												],
 												"body": {
 													"mode": "raw",
-													"raw": "{\n  \"firstName\": \"<string>\",\n  \"secondName\": \"<string>\",\n  \"patronimic\": \"<string>\",\n  \"birthday\": \"<dateTime>\",\n  \"personalInterest\": \"<string>\",\n  \"city\": \"<string>\",\n  \"gender\": 2\n}",
+													"raw": "{\n  \"firstName\": \"<string>\",\n  \"secondName\": \"<string>\",\n  \"patronimic\": \"<string>\",\n  \"birthday\": \"<dateTime>\",\n  \"personalInterest\": \"<string>\",\n  \"city\": \"<string>\",\n  \"gender\": \"Other\"\n}",
 													"options": {
 														"raw": {
 															"headerFamily": "json",
@@ -3415,7 +3570,7 @@
 												],
 												"body": {
 													"mode": "raw",
-													"raw": "{\n  \"firstName\": \"<string>\",\n  \"secondName\": \"<string>\",\n  \"patronimic\": \"<string>\",\n  \"birthday\": \"<dateTime>\",\n  \"personalInterest\": \"<string>\",\n  \"city\": \"<string>\",\n  \"gender\": 2\n}",
+													"raw": "{\n  \"firstName\": \"<string>\",\n  \"secondName\": \"<string>\",\n  \"patronimic\": \"<string>\",\n  \"birthday\": \"<dateTime>\",\n  \"personalInterest\": \"<string>\",\n  \"city\": \"<string>\",\n  \"gender\": \"Other\"\n}",
 													"options": {
 														"raw": {
 															"headerFamily": "json",
@@ -3463,7 +3618,7 @@
 												],
 												"body": {
 													"mode": "raw",
-													"raw": "{\n  \"firstName\": \"<string>\",\n  \"secondName\": \"<string>\",\n  \"patronimic\": \"<string>\",\n  \"birthday\": \"<dateTime>\",\n  \"personalInterest\": \"<string>\",\n  \"city\": \"<string>\",\n  \"gender\": 2\n}",
+													"raw": "{\n  \"firstName\": \"<string>\",\n  \"secondName\": \"<string>\",\n  \"patronimic\": \"<string>\",\n  \"birthday\": \"<dateTime>\",\n  \"personalInterest\": \"<string>\",\n  \"city\": \"<string>\",\n  \"gender\": \"Other\"\n}",
 													"options": {
 														"raw": {
 															"headerFamily": "json",
@@ -3511,7 +3666,7 @@
 												],
 												"body": {
 													"mode": "raw",
-													"raw": "{\n  \"firstName\": \"<string>\",\n  \"secondName\": \"<string>\",\n  \"patronimic\": \"<string>\",\n  \"birthday\": \"<dateTime>\",\n  \"personalInterest\": \"<string>\",\n  \"city\": \"<string>\",\n  \"gender\": 2\n}",
+													"raw": "{\n  \"firstName\": \"<string>\",\n  \"secondName\": \"<string>\",\n  \"patronimic\": \"<string>\",\n  \"birthday\": \"<dateTime>\",\n  \"personalInterest\": \"<string>\",\n  \"city\": \"<string>\",\n  \"gender\": \"Other\"\n}",
 													"options": {
 														"raw": {
 															"headerFamily": "json",
@@ -3793,7 +3948,7 @@
 										}
 									],
 									"cookie": [],
-									"body": "{\n  \"firstName\": \"<string>\",\n  \"secondName\": \"<string>\",\n  \"patronimic\": \"<string>\",\n  \"birthday\": \"<dateTime>\",\n  \"personalInterest\": \"<string>\",\n  \"city\": \"<string>\",\n  \"gender\": 2,\n  \"email\": \"<string>\",\n  \"id\": \"<uuid>\",\n  \"status\": \"<integer>\"\n}"
+									"body": "{\n  \"firstName\": \"<string>\",\n  \"secondName\": \"<string>\",\n  \"patronimic\": \"<string>\",\n  \"birthday\": \"<dateTime>\",\n  \"personalInterest\": \"<string>\",\n  \"city\": \"<string>\",\n  \"gender\": \"Male\",\n  \"email\": \"<string>\",\n  \"id\": \"<uuid>\",\n  \"status\": \"<integer>\"\n}"
 								},
 								{
 									"name": "Bad Request",
@@ -4114,7 +4269,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n  \"firstName\": \"<string>\",\n  \"secondName\": \"<string>\",\n  \"patronimic\": \"<string>\",\n  \"birthday\": \"<dateTime>\",\n  \"personalInterest\": \"<string>\",\n  \"city\": \"<string>\",\n  \"gender\": 1,\n  \"email\": \"<string>\"\n}",
+									"raw": "{\n  \"firstName\": \"<string>\",\n  \"secondName\": \"<string>\",\n  \"patronimic\": \"<string>\",\n  \"birthday\": \"<dateTime>\",\n  \"personalInterest\": \"<string>\",\n  \"city\": \"<string>\",\n  \"gender\": \"Other\",\n  \"email\": \"<string>\"\n}",
 									"options": {
 										"raw": {
 											"headerFamily": "json",
@@ -4153,7 +4308,7 @@
 										],
 										"body": {
 											"mode": "raw",
-											"raw": "{\n  \"firstName\": \"<string>\",\n  \"secondName\": \"<string>\",\n  \"patronimic\": \"<string>\",\n  \"birthday\": \"<dateTime>\",\n  \"personalInterest\": \"<string>\",\n  \"city\": \"<string>\",\n  \"gender\": 1,\n  \"email\": \"<string>\"\n}",
+											"raw": "{\n  \"firstName\": \"<string>\",\n  \"secondName\": \"<string>\",\n  \"patronimic\": \"<string>\",\n  \"birthday\": \"<dateTime>\",\n  \"personalInterest\": \"<string>\",\n  \"city\": \"<string>\",\n  \"gender\": \"Other\",\n  \"email\": \"<string>\"\n}",
 											"options": {
 												"raw": {
 													"headerFamily": "json",
@@ -4202,7 +4357,7 @@
 										],
 										"body": {
 											"mode": "raw",
-											"raw": "{\n  \"firstName\": \"<string>\",\n  \"secondName\": \"<string>\",\n  \"patronimic\": \"<string>\",\n  \"birthday\": \"<dateTime>\",\n  \"personalInterest\": \"<string>\",\n  \"city\": \"<string>\",\n  \"gender\": 1,\n  \"email\": \"<string>\"\n}",
+											"raw": "{\n  \"firstName\": \"<string>\",\n  \"secondName\": \"<string>\",\n  \"patronimic\": \"<string>\",\n  \"birthday\": \"<dateTime>\",\n  \"personalInterest\": \"<string>\",\n  \"city\": \"<string>\",\n  \"gender\": \"Other\",\n  \"email\": \"<string>\"\n}",
 											"options": {
 												"raw": {
 													"headerFamily": "json",
@@ -4256,7 +4411,7 @@
 										],
 										"body": {
 											"mode": "raw",
-											"raw": "{\n  \"firstName\": \"<string>\",\n  \"secondName\": \"<string>\",\n  \"patronimic\": \"<string>\",\n  \"birthday\": \"<dateTime>\",\n  \"personalInterest\": \"<string>\",\n  \"city\": \"<string>\",\n  \"gender\": 1,\n  \"email\": \"<string>\"\n}",
+											"raw": "{\n  \"firstName\": \"<string>\",\n  \"secondName\": \"<string>\",\n  \"patronimic\": \"<string>\",\n  \"birthday\": \"<dateTime>\",\n  \"personalInterest\": \"<string>\",\n  \"city\": \"<string>\",\n  \"gender\": \"Other\",\n  \"email\": \"<string>\"\n}",
 											"options": {
 												"raw": {
 													"headerFamily": "json",
@@ -4310,7 +4465,7 @@
 										],
 										"body": {
 											"mode": "raw",
-											"raw": "{\n  \"firstName\": \"<string>\",\n  \"secondName\": \"<string>\",\n  \"patronimic\": \"<string>\",\n  \"birthday\": \"<dateTime>\",\n  \"personalInterest\": \"<string>\",\n  \"city\": \"<string>\",\n  \"gender\": 1,\n  \"email\": \"<string>\"\n}",
+											"raw": "{\n  \"firstName\": \"<string>\",\n  \"secondName\": \"<string>\",\n  \"patronimic\": \"<string>\",\n  \"birthday\": \"<dateTime>\",\n  \"personalInterest\": \"<string>\",\n  \"city\": \"<string>\",\n  \"gender\": \"Other\",\n  \"email\": \"<string>\"\n}",
 											"options": {
 												"raw": {
 													"headerFamily": "json",

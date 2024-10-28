@@ -1,7 +1,7 @@
-﻿using snhw.Data;
+﻿using snhw_api.Data;
 using System.Collections.Concurrent;
 
-namespace snhw.Common
+namespace snhw_api.Common
 {
     internal static class Queues
     {

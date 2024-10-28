@@ -1,7 +1,7 @@
 ﻿using Npgsql;
-using snhw.Common;
+using snhw_api.Common;
 
-namespace snhw.Data
+namespace snhw_api.Data
 {
     public class PostingPerson
     {

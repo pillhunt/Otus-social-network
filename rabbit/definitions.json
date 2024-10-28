@@ -1,0 +1,36 @@
+{
+    "queues": [
+        {
+            "name": "inbound_queue",
+            "vhost": "/",
+            "durable": false,
+            "auto_delete": false,
+            "arguments": {
+                "x-queue-type": "classic"
+            }
+        }
+    ],
+    "exchanges": [
+        {
+            "name": "inbound_exchange",
+            "vhost": "/",
+            "type": "direct",
+            "durable": false,
+            "auto_delete": false,
+            "internal": false,
+            "arguments": {
+            }
+        }
+    ],
+    "bindings": [
+        {
+            "source": "inbound_exchange",
+            "vhost": "/",
+            "destination": "inbound_queue",
+            "destination_type": "queue",
+            "routing_key": "inbound_queue",
+            "arguments": {
+            }
+        }
+    ]
+}

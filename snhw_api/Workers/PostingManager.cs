@@ -1,8 +1,8 @@
 ﻿using Microsoft.VisualStudio.Threading;
-using snhw.Common;
+using snhw_api.Common;
 using System.Collections.Concurrent;
 
-namespace snhw.Workers
+namespace snhw_api.Workers
 {
     public class PostingManager : BackgroundService
     {

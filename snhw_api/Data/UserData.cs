@@ -1,4 +1,6 @@
-﻿namespace snhw.Data
+﻿using System.Text.Json.Serialization;
+
+namespace snhw_api.Data
 {
     public class UserBaseData
     {
@@ -33,6 +35,7 @@
     /// <summary>
     /// Пол
     /// </summary>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum Gender
     {
         /// <summary>

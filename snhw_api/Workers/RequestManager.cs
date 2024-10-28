@@ -1,8 +1,8 @@
 ﻿using System.Collections.Concurrent;
 using Microsoft.VisualStudio.Threading;
-using snhw.Common;
+using snhw_api.Common;
 
-namespace snhw.Workers
+namespace snhw_api.Workers
 {
     internal sealed class RequestManager : BackgroundService
     {

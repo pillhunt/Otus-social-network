@@ -7,3 +7,5 @@
     3. \copy sn_user_contacts (id, user_id, contact_user_id, status, created, processed, comment) FROM 'user_contacts.csv' DELIMITER ',' CSV
     4. \copy sn_user_posts (id, user_id, post_id, status, created, processed, text) FROM 'user_posts.csv' DELIMITER ',' CSV
 5. После окончания установки данных открыть в Postman сохранённую коллекцию запросов в одноимённой папке.
+6. В проект добавлен RabbitMQ и слушатель очереди. При создании поста в очередь размещается сообщение, что такой-то пользователь сделал пост.
+При этом в слушателе автоматически отображается сообщение

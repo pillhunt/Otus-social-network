@@ -158,13 +158,8 @@ namespace snhw_api
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            group.MapGet("/feed/posted", async (Guid userId, IDistributedCache cache, HttpContext context) => await actions.FeedPostedAsync(userId, cache, context))
-            .WithName("FeedPosted")
-            .Produces(StatusCodes.Status200OK)
-            .Produces(StatusCodes.Status400BadRequest, typeof(InfoData))
-            .Produces(StatusCodes.Status404NotFound, typeof(InfoData))
-            .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
-            ;
+            group.Map("/feed/posted", async context => await actions.FeedPostedAsync(context))
+            .WithName("FeedPosted");
 
             return group;
         }

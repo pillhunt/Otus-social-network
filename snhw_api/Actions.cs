@@ -17,6 +17,7 @@ using Newtonsoft.Json;
 using System.Threading;
 using System.Net.WebSockets;
 using System.Net;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace snhw_api
 {
@@ -677,7 +678,7 @@ namespace snhw_api
             }
         }
 
-        public async Task<IResult> FeedPostedAsync(Guid userId, IDistributedCache cache, HttpContext context)
+        public async Task<IResult> FeedPostedAsync(HttpContext context)
         {
             try
             {
@@ -688,18 +689,64 @@ namespace snhw_api
 
                     while (true)
                     {
-                        var now = DateTime.Now;
-                        byte[] data = Encoding.ASCII.GetBytes($"{now}");
-                        await webSocket.SendAsync(data, WebSocketMessageType.Text, true, CancellationToken.None);
-                        await Task.Delay(1000);
-
-                        long r = rand.NextInt64(0, 10);
-
-                        if (r == 7)
+                        if (Queues.JsutPosteduserIdList.Count > 0)
                         {
-                            await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure,
-                                "random closing", CancellationToken.None);
+                            Guid userId = Queues.JsutPosteduserIdList[0];
+
+                            var now = DateTime.Now;
+                            using NpgsqlConnection connection = new(connectionString);
+
+                            try
+                            {
+                                string sqlText = "SELECT contact_user_id FROM public.sn_user_contacts WHERE user_id = @user_id";
+
+                                await connection.OpenAsync();
+
+                                await using var selectCommand = new NpgsqlCommand(sqlText, connection)
+                                {
+                                    Parameters =
+                                    {
+                                        new("@user_id", userId)
+                                    }
+                                };
+
+                                using NpgsqlDataReader reader = await selectCommand.ExecuteReaderAsync();
+
+                                if (reader.HasRows)
+                                {
+                                    while (reader.Read())
+                                    {
+                                        Guid consumerId = reader.GetGuid(0);
+                                        var json = new
+                                        {
+                                            consumerId = consumerId,
+                                            time = now,
+                                            messageHead = "Опубликовано сообщение",
+                                            status = 1
+                                        };
+
+                                        string jsonMessage = System.Text.Json.JsonSerializer.Serialize(json);
+
+                                        byte[] data = Encoding.UTF8.GetBytes(jsonMessage);
+                                        await webSocket.SendAsync(data, WebSocketMessageType.Text, true, CancellationToken.None);
+                                    }
+                                }
+
+                                lock (Queues.JsutPosteduserIdList)
+                                    Queues.JsutPosteduserIdList.Remove(userId);
+                            }
+                            catch (Exception ex)
+                            {
+                                return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                                    jsonSerializerOptions, "application/json", 500);
+                            }
+                            finally
+                            {
+                                connection.Close();
+                            }
                         }
+                        //await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure,
+                        //    "random closing", CancellationToken.None);
                     }
                 }
                 else

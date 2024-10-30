@@ -1,16 +1,18 @@
 ﻿
 using System.Text;
 using System.Net.WebSockets;
-using Microsoft.Extensions.Hosting;
+using Newtonsoft.Json;
 
 namespace snhw_client.Worker
 {
     public class WebSocketListener : BackgroundService
     {
+        private Guid consumerId;
         private ClientWebSocket clientWebSocket {  get; set; } 
 
-        public WebSocketListener() 
+        public WebSocketListener(Guid consumerId) 
         {
+            this.consumerId = consumerId;
             clientWebSocket = new ClientWebSocket();
         }
 
@@ -28,7 +30,8 @@ namespace snhw_client.Worker
 
                 await clientWebSocket.ConnectAsync(new Uri(uri), CancellationToken.None);
                 Console.WriteLine("WebSocketListener > Подключение: успешно");
-                byte[] buf = new byte[1056];
+                
+                byte[] buf = new byte[2048];
 
                 while (!stoppingToken.IsCancellationRequested)
                 {
@@ -46,11 +49,12 @@ namespace snhw_client.Worker
                         }
                         else
                         {
-                            Console.WriteLine(Encoding.ASCII.GetString(buf, 0, result.Count));
+                            var message = (dynamic)JsonConvert.DeserializeObject(Encoding.UTF8.GetString(buf, 0, result.Count));                            
+                            Guid.TryParse(message.consumerId.ToString(), out Guid consumerId);
+                            if (this.consumerId == consumerId)
+                                Console.WriteLine(JsonConvert.SerializeObject(message));
                         }
                     }
-
-                    Thread.Sleep(10000);
 
                     if (stoppingToken.IsCancellationRequested)
                         break;

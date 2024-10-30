@@ -64,41 +64,6 @@ namespace snhw_api
             app.MapGroup(version).PostGroup().WithTags("Post");
             app.MapGroup(version).FeedGroup().WithTags("Feed");
 
-            app.Map($"{version}/ws", async context =>
-            {
-                Console.WriteLine("WebSocket Ok");
-
-                if (context.WebSockets.IsWebSocketRequest)
-                {
-                    using var webSocket = await context.WebSockets.AcceptWebSocketAsync();
-                    var rand = new Random();
-
-                    while (webSocket.State == WebSocketState.Open)
-                    {
-                        Console.WriteLine("WebSocket Ok 2");
-                        var now = DateTime.Now;
-                        byte[] data = Encoding.ASCII.GetBytes($"{now}");
-                        await webSocket.SendAsync(data, WebSocketMessageType.Text,
-                            true, CancellationToken.None);
-                        await Task.Delay(1000);
-
-                        long r = rand.NextInt64(0, 10);
-
-                        if (r == 7)
-                        {
-                            await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure,
-                                "random closing", CancellationToken.None);
-
-                            return;
-                        }
-                    }
-                }
-                else
-                {
-                    context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
-                }
-            });
-
             app.Run();
         }        
     }    

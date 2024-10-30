@@ -11,5 +11,6 @@ namespace snhw_api.Common
         internal static ConcurrentQueue<Task<IResult>> PostingTaskQueue { get; set; } = new ConcurrentQueue<Task<IResult>>();
         internal static List<PostingPerson> ReadyForPostingPerson { get; set; }  = new List<PostingPerson>(1000);        
         internal static List<PostingPerson> PostingPersonsList { get; set; } = new List<PostingPerson>(1000);
+        internal static List<Guid> JsutPosteduserIdList {  get; set; } = new List<Guid>();
     }
 }

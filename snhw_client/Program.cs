@@ -12,8 +12,8 @@ namespace snhw_client
 
             // Add services to the container.
             builder.Services.AddControllersWithViews();
-            builder.Services.AddHostedService<RabbitMqListener>(listener => new RabbitMqListener(consumerId.ToString()));
-            builder.Services.AddHostedService<WebSocketListener>();
+            builder.Services.AddHostedService<RabbitMqListener>(listener => new RabbitMqListener(consumerId));
+            builder.Services.AddHostedService<WebSocketListener>(listener => new WebSocketListener(consumerId));
 
             var app = builder.Build();
 

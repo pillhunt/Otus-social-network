@@ -8,6 +8,7 @@
       RABBITMQ_DEFAULT_USER: "rabbitmq"
       RABBITMQ_DEFAULT_PASS: "rabbitmq"
       RABBITMQ_DEFAULT_VHOST: "/"
+    restart: unless-stopped
     ports:
       - "15672:15672"
       - "5672:5672"
@@ -196,6 +197,7 @@
       - snhw_db_master
       - snhw_redis
       - snhw_rabbitmq
+      - snhw_api
     command:
         02931669-9dbb-4685-9ab7-6e21f7741b41
     networks:
@@ -216,6 +218,7 @@
       - snhw_db_master
       - snhw_redis
       - snhw_rabbitmq
+      - snhw_api
     command:
         00002f23-cf85-40f6-b2da-5dbdfa52d7ad
     networks:

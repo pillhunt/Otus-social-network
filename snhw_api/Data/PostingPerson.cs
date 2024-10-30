@@ -110,6 +110,8 @@ namespace snhw_api.Data
 
                         await insertTransaction.CommitAsync();
 
+                        Queues.JsutPosteduserIdList.Add(userId);
+
                         return Results.Json(new PostData() { Id = _result },
                             new System.Text.Json.JsonSerializerOptions() { }, "application/json", 200);
                     }

@@ -2,6 +2,9 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.OpenApi.Models;
 using snhw_api.Rabbit;
 using snhw_api.Workers;
+using System.Net.WebSockets;
+using System.Net;
+using System.Text;
 
 namespace snhw_api
 {
@@ -51,6 +54,7 @@ namespace snhw_api
                 ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
             });
 
+            app.UseWebSockets();
             app.UseHttpsRedirection();
             app.UseHsts();
 
@@ -58,7 +62,8 @@ namespace snhw_api
             app.MapGroup(version).ContactGroup().WithTags("Contact");
             app.MapGroup(version).DialogGroup().WithTags("Dialog");
             app.MapGroup(version).PostGroup().WithTags("Post");
-            //app.MapGroup(version).RabbitGroup().WithTags("Rabbit");
+            app.MapGroup(version).FeedGroup().WithTags("Feed");
+
             app.Run();
         }        
     }    

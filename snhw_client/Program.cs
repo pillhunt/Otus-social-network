@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 using snhw_client.Worker;
 
 namespace snhw_client
@@ -14,7 +12,8 @@ namespace snhw_client
 
             // Add services to the container.
             builder.Services.AddControllersWithViews();
-            builder.Services.AddHostedService<RabbitMqListener>(listener => new RabbitMqListener(consumerId.ToString()));
+            builder.Services.AddHostedService<RabbitMqListener>(listener => new RabbitMqListener(consumerId));
+            builder.Services.AddHostedService<WebSocketListener>(listener => new WebSocketListener(consumerId));
 
             var app = builder.Build();
 
@@ -28,6 +27,7 @@ namespace snhw_client
 
             app.UseHttpsRedirection();
             app.UseStaticFiles();
+            app.UseWebSockets();
 
             app.UseRouting();
 

@@ -143,6 +143,13 @@ namespace snhw_api
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
+            #endregion
+
+            return group;
+        }
+
+        public static RouteGroupBuilder FeedGroup(this RouteGroupBuilder group)
+        {
             group.MapGet("/feed", async (Guid userId, IDistributedCache cache) => await actions.FeedGetAsync(userId, cache))
             .WithName("FeedGet")
             .Produces(StatusCodes.Status200OK)
@@ -151,7 +158,8 @@ namespace snhw_api
             .Produces(StatusCodes.Status500InternalServerError, typeof(InfoData))
             ;
 
-            #endregion
+            group.Map("/feed/posted", async context => await actions.FeedPostedAsync(context))
+            .WithName("FeedPosted");
 
             return group;
         }

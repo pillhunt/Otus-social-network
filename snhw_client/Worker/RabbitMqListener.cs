@@ -18,9 +18,9 @@ namespace snhw_client.Worker
         private string exchange { get; set; } = string.Empty;
         private string routingKey { get; set; } = string.Empty;
         private ConnectionFactory rabbitFactory { get; set; }
-        private string consumerId { get; set; } = string.Empty;
+        private Guid consumerId { get; set; }
 
-        public RabbitMqListener(string consumerId)
+        public RabbitMqListener(Guid consumerId)
         {
             this.consumerId = consumerId;
 
@@ -57,7 +57,7 @@ namespace snhw_client.Worker
             channel.QueueBind(queue, exchange, routingKey);            
             // channel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false); 
 
-            Console.WriteLine(" [*] Waiting for messages.");
+            Console.WriteLine("Rabbit waiting for messages.");
         }
 
         protected override Task ExecuteAsync(CancellationToken stoppingToken)

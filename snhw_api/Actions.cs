@@ -15,6 +15,9 @@ using snhw_api.Common;
 using snhw_api.Rabbit;
 using Newtonsoft.Json;
 using System.Threading;
+using System.Net.WebSockets;
+using System.Net;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace snhw_api
 {
@@ -127,7 +130,7 @@ namespace snhw_api
                     return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
 
                 await connection.OpenAsync();
-                
+
                 string sqlText = "DELETE FROM sn_user_info WHERE user_id = @user_id";
 
                 await using var deleteCommand = new NpgsqlCommand(sqlText, connection)
@@ -163,7 +166,7 @@ namespace snhw_api
                     return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
 
                 await connection.OpenAsync();
-                
+
                 string sqlText = "UPDATE public.sn_user_info SET " +
                     " user_name=@user_name, user_sname=@user_sname, user_patronimic=@user_patronimic, " +
                     " user_birthday=@user_birthday, user_city=@user_city, user_email=@user_email, user_gender=@user_gender, " +
@@ -493,7 +496,7 @@ namespace snhw_api
                 var textTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                 IResult result = await postingPerson.PrepareForPublish(text, textTime);
 
-                string sqlText = "SELECT contact_user_id FROM public.sn_user_contacts WHERE user_id = @user_id";                
+                string sqlText = "SELECT contact_user_id FROM public.sn_user_contacts WHERE user_id = @user_id";
 
                 await connection.OpenAsync();
 
@@ -672,6 +675,91 @@ namespace snhw_api
             finally
             {
                 await connection.CloseAsync();
+            }
+        }
+
+        public async Task<IResult> FeedPostedAsync(HttpContext context)
+        {
+            try
+            {
+                if (context.WebSockets.IsWebSocketRequest)
+                {
+                    using var webSocket = await context.WebSockets.AcceptWebSocketAsync();
+                    var rand = new Random();
+
+                    while (true)
+                    {
+                        if (Queues.JsutPosteduserIdList.Count > 0)
+                        {
+                            Guid userId = Queues.JsutPosteduserIdList[0];
+
+                            var now = DateTime.Now;
+                            using NpgsqlConnection connection = new(connectionString);
+
+                            try
+                            {
+                                string sqlText = "SELECT contact_user_id FROM public.sn_user_contacts WHERE user_id = @user_id";
+
+                                await connection.OpenAsync();
+
+                                await using var selectCommand = new NpgsqlCommand(sqlText, connection)
+                                {
+                                    Parameters =
+                                    {
+                                        new("@user_id", userId)
+                                    }
+                                };
+
+                                using NpgsqlDataReader reader = await selectCommand.ExecuteReaderAsync();
+
+                                if (reader.HasRows)
+                                {
+                                    while (reader.Read())
+                                    {
+                                        Guid consumerId = reader.GetGuid(0);
+                                        var json = new
+                                        {
+                                            consumerId = consumerId,
+                                            time = now,
+                                            messageHead = "Опубликовано сообщение",
+                                            status = 1
+                                        };
+
+                                        string jsonMessage = System.Text.Json.JsonSerializer.Serialize(json);
+
+                                        byte[] data = Encoding.UTF8.GetBytes(jsonMessage);
+                                        await webSocket.SendAsync(data, WebSocketMessageType.Text, true, CancellationToken.None);
+                                    }
+                                }
+
+                                lock (Queues.JsutPosteduserIdList)
+                                    Queues.JsutPosteduserIdList.Remove(userId);
+                            }
+                            catch (Exception ex)
+                            {
+                                return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                                    jsonSerializerOptions, "application/json", 500);
+                            }
+                            finally
+                            {
+                                connection.Close();
+                            }
+                        }
+                        //await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure,
+                        //    "random closing", CancellationToken.None);
+                    }
+                }
+                else
+                {
+                    context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                }
+
+                return Results.Json("true", jsonSerializerOptions, "application/json", 200);
+            }
+            catch (Exception ex)
+            {
+                return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                    jsonSerializerOptions, "application/json", 500);
             }
         }
 

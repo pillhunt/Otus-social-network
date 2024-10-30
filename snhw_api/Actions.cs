@@ -15,6 +15,8 @@ using snhw_api.Common;
 using snhw_api.Rabbit;
 using Newtonsoft.Json;
 using System.Threading;
+using System.Net.WebSockets;
+using System.Net;
 
 namespace snhw_api
 {
@@ -127,7 +129,7 @@ namespace snhw_api
                     return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
 
                 await connection.OpenAsync();
-                
+
                 string sqlText = "DELETE FROM sn_user_info WHERE user_id = @user_id";
 
                 await using var deleteCommand = new NpgsqlCommand(sqlText, connection)
@@ -163,7 +165,7 @@ namespace snhw_api
                     return Results.Json("Пользователь не найден", new System.Text.Json.JsonSerializerOptions(), "application/json", 404);
 
                 await connection.OpenAsync();
-                
+
                 string sqlText = "UPDATE public.sn_user_info SET " +
                     " user_name=@user_name, user_sname=@user_sname, user_patronimic=@user_patronimic, " +
                     " user_birthday=@user_birthday, user_city=@user_city, user_email=@user_email, user_gender=@user_gender, " +
@@ -493,7 +495,7 @@ namespace snhw_api
                 var textTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                 IResult result = await postingPerson.PrepareForPublish(text, textTime);
 
-                string sqlText = "SELECT contact_user_id FROM public.sn_user_contacts WHERE user_id = @user_id";                
+                string sqlText = "SELECT contact_user_id FROM public.sn_user_contacts WHERE user_id = @user_id";
 
                 await connection.OpenAsync();
 
@@ -672,6 +674,45 @@ namespace snhw_api
             finally
             {
                 await connection.CloseAsync();
+            }
+        }
+
+        public async Task<IResult> FeedPostedAsync(Guid userId, IDistributedCache cache, HttpContext context)
+        {
+            try
+            {
+                if (context.WebSockets.IsWebSocketRequest)
+                {
+                    using var webSocket = await context.WebSockets.AcceptWebSocketAsync();
+                    var rand = new Random();
+
+                    while (true)
+                    {
+                        var now = DateTime.Now;
+                        byte[] data = Encoding.ASCII.GetBytes($"{now}");
+                        await webSocket.SendAsync(data, WebSocketMessageType.Text, true, CancellationToken.None);
+                        await Task.Delay(1000);
+
+                        long r = rand.NextInt64(0, 10);
+
+                        if (r == 7)
+                        {
+                            await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure,
+                                "random closing", CancellationToken.None);
+                        }
+                    }
+                }
+                else
+                {
+                    context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                }
+
+                return Results.Json("true", jsonSerializerOptions, "application/json", 200);
+            }
+            catch (Exception ex)
+            {
+                return Results.Json($"Ошибка: {ex.Message}; Внутренняя ошибка: {ex.InnerException?.Message}",
+                    jsonSerializerOptions, "application/json", 500);
             }
         }
 
